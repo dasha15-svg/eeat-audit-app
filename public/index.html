@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EEAT-аудит клиники</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #EEF2F2;
+  --bg-card: #FFFFFF;
+  --ink: #12232B;
+  --ink-muted: #5C6B70;
+  --accent: #0F7C86;
+  --accent-tint: #DCEEEF;
+  --pass: #2F8F5B;
+  --pass-tint: #E3F3EA;
+  --partial: #A97417;
+  --partial-tint: #FBF1DC;
+  --fail: #C4483A;
+  --fail-tint: #FBE7E4;
+  --unknown: #8B9599;
+  --unknown-tint: #EEF0F1;
+  --border: #D7E0E0;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+* , *::before, *::after { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: var(--sans);
+  color: var(--ink);
+  background:
+    linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 100% 28px,
+    var(--bg);
+  min-height: 100vh;
+  padding: 48px 16px;
+}
+.wrap { max-width: 760px; margin: 0 auto; }
+.eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--accent); font-weight: 600; margin-bottom: 10px; }
+h1 { font-size: 28px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.01em; }
+.lede { color: var(--ink-muted); font-size: 15px; line-height: 1.5; margin: 0 0 24px; max-width: 56ch; }
+
+.input-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 1px 2px rgba(18,35,43,.04); }
+.field-label { display: block; font-size: 12px; color: var(--ink-muted); margin-bottom: 6px; }
+.url-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.url-input {
+  flex: 1;
+  min-width: 220px;
+  font-family: var(--mono);
+  font-size: 13.5px;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+.url-input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
+button {
+  font-family: var(--sans); font-size: 13.5px; font-weight: 600; border-radius: 8px;
+  padding: 12px 20px; cursor: pointer; border: 1px solid transparent;
+  background: var(--ink); color: #fff; transition: background .15s, transform .1s;
+}
+button:hover { background: var(--accent); }
+button:active { transform: scale(0.98); }
+button:disabled { opacity: .5; cursor: default; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: 12px; color: var(--ink-muted); margin-top: 10px; line-height: 1.4; }
+
+.loading-row { display: none; align-items: center; gap: 10px; margin-top: 14px; font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.loading-row.active { display: flex; }
+.scan-line { width: 60px; height: 3px; background: var(--accent-tint); border-radius: 2px; position: relative; overflow: hidden; }
+.scan-line::after { content: ''; position: absolute; top: 0; left: -18px; width: 18px; height: 100%; background: var(--accent); animation: scan 1.1s ease-in-out infinite; }
+@keyframes scan { 0% { left: -18px; } 100% { left: 60px; } }
+@media (prefers-reduced-motion: reduce) { .scan-line::after { animation: none; left: 20px; } }
+.error-row { display: none; margin-top: 14px; font-size: 13px; color: var(--fail); background: var(--fail-tint); border-radius: 8px; padding: 10px 12px; }
+.error-row.active { display: block; }
+
+.results { display: none; margin-top: 32px; }
+.results.active { display: block; }
+.overall { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
+.overall-score { font-family: var(--mono); font-size: 42px; font-weight: 700; line-height: 1; }
+.overall-score .pct { font-size: 20px; color: var(--ink-muted); font-weight: 500; }
+.overall-label { font-size: 12px; color: var(--ink-muted); margin: 4px 0 14px; text-transform: uppercase; letter-spacing: .06em; }
+.pages-note { font-size: 11.5px; color: var(--ink-muted); margin-top: 10px; }
+
+.range-bar { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--fail-tint) 0%, var(--fail-tint) 40%, var(--partial-tint) 40%, var(--partial-tint) 70%, var(--pass-tint) 70%, var(--pass-tint) 100%); }
+.range-bar.small { height: 5px; margin: 10px 0 14px; }
+.range-bar .marker { position: absolute; top: 50%; width: 3px; height: 16px; background: var(--ink); border-radius: 2px; transform: translate(-50%, -50%); display: none; }
+.range-bar.small .marker { height: 13px; }
+
+.category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 620px) { .category-grid { grid-template-columns: 1fr; } .url-row { flex-direction: column; } button { width: 100%; } }
+.cat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+.cat-head { display: flex; justify-content: space-between; align-items: baseline; }
+.cat-name { font-size: 13.5px; font-weight: 600; }
+.cat-letter { font-family: var(--mono); color: var(--accent); margin-right: 4px; }
+.cat-score { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--ink-muted); }
+
+.item-row { padding: 9px 0; border-top: 1px solid var(--border); }
+.item-row:first-child { border-top: none; }
+.item-top { display: flex; align-items: center; gap: 7px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.dot.pass { background: var(--pass); } .dot.partial { background: var(--partial); }
+.dot.fail { background: var(--fail); } .dot.unknown { background: var(--unknown); }
+.item-label { font-size: 12.5px; flex: 1; }
+.verdict-tag { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.verdict-tag.pass { background: var(--pass-tint); color: var(--pass); }
+.verdict-tag.partial { background: var(--partial-tint); color: var(--partial); }
+.verdict-tag.fail { background: var(--fail-tint); color: var(--fail); }
+.verdict-tag.unknown { background: var(--unknown-tint); color: var(--unknown); }
+.item-reason { font-size: 12px; color: var(--ink-muted); margin: 4px 0 0 14px; line-height: 1.4; }
+.item-rec { font-size: 12px; color: var(--accent); margin: 3px 0 0 14px; line-height: 1.4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">EEAT AUDIT</div>
+  <h1>Оценка доверия клиники</h1>
+  <p class="lede">Вставьте ссылку на медицинский сайт — Claude прочитает его и оценит по чек-листу EEAT.</p>
+
+  <div class="input-card">
+    <label class="field-label" for="url">Ссылка на сайт клиники</label>
+    <div class="url-row">
+      <input type="text" id="url" class="url-input" placeholder="https://clinic-example.com">
+      <button id="runBtn" type="button">Запустить аудит</button>
+    </div>
+    <div class="hint">Прочитаем главную и, если найдём, страницу врачей/о клинике — автоматически.</div>
+    <div class="loading-row" id="loadingRow"><div class="scan-line"></div><span id="loadingText">Читаю сайт…</span></div>
+    <div class="error-row" id="errorRow"></div>
+  </div>
+
+  <div class="results" id="results">
+    <div class="overall">
+      <div class="overall-score"><span id="overallNum">—</span><span class="pct">%</span></div>
+      <div class="overall-label">Соответствие EEAT-критериям</div>
+      <div class="range-bar"><div class="marker" id="overallMarker"></div></div>
+      <div class="pages-note" id="pagesNote"></div>
+    </div>
+    <div class="category-grid" id="categoryGrid"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const ITEM_META = {
+    E2: { cat: 'E', label: 'Кейсы и результаты работы врача' },
+    E3: { cat: 'E', label: 'Именной комментарий врача' },
+    E4: { cat: 'E', label: 'Экспертные комментарии в блоге' },
+    X3: { cat: 'X', label: 'Образование врача указано конкретно' },
+    X4: { cat: 'X', label: 'Стаж врача указан конкретно' },
+    X6: { cat: 'X', label: 'Сертификаты/лицензии врача упомянуты' },
+    X7: { cat: 'X', label: 'Приоритетные направления содержательны' },
+    X8: { cat: 'X', label: 'Оборудование названо конкретно' },
+    X9: { cat: 'X', label: 'SEO-текст о клинике содержательный' },
+    X10: { cat: 'X', label: 'Показания/противопоказания конкретны' },
+    X11: { cat: 'X', label: 'Симптомы/показания информативны' },
+    X12: { cat: 'X', label: 'Этапы услуги описаны' },
+    X13: { cat: 'X', label: 'Подготовка к процедуре описана' },
+    X14: { cat: 'X', label: 'Реабилитация описана' },
+    A7: { cat: 'A', label: 'Автор статьи кликабелен, есть страница' },
+    A8: { cat: 'A', label: 'Источники в статьях авторитетные' },
+    T1: { cat: 'T', label: 'Страница «Про клинику» содержательна' },
+    T2: { cat: 'T', label: 'Сертификаты и лицензии клиники показаны' },
+    T4: { cat: 'T', label: 'Отзывы выглядят подлинными' },
+    T9: { cat: 'T', label: 'Лицензия в футере конкретная' },
+    T11: { cat: 'T', label: 'Медицинский дисклеймер уместен' },
+    T17: { cat: 'T', label: 'FAQ отвечает по существу' },
+    'SCHEMA-ORG': { cat: 'T', label: 'Микроразметка MedicalOrganization' },
+    'SCHEMA-DOC': { cat: 'T', label: 'Микроразметка врача' },
+    'SCHEMA-SERVICE': { cat: 'T', label: 'Микроразметка услуги' }
+  };
+  const CAT_NAMES = { E: 'Experience', X: 'Expertise', A: 'Authoritativeness', T: 'Trustworthiness' };
+  const VERDICT_LABEL = { pass: 'ок', partial: 'частично', fail: 'нет', unknown: 'нет данных' };
+  const $ = (id) => document.getElementById(id);
+
+  function escapeHtml(str) {
+    const d = document.createElement('div');
+    d.textContent = str == null ? '' : String(str);
+    return d.innerHTML;
+  }
+
+  function setLoading(isLoading) {
+    $('runBtn').disabled = isLoading;
+    $('loadingRow').classList.toggle('active', isLoading);
+  }
+
+  function showError(msg) {
+    const row = $('errorRow');
+    row.textContent = msg;
+    row.classList.add('active');
+  }
+
+  function positionMarker(el, pct) {
+    if (pct === null || pct === undefined) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+    el.style.left = pct + '%';
+  }
+
+  function computeScores(results) {
+    const byCat = { E: [], X: [], A: [], T: [] };
+    results.forEach((r) => { const meta = ITEM_META[r.id]; if (meta) byCat[meta.cat].push(r); });
+    const catScores = {};
+    let sumOfCats = 0, catCount = 0;
+    ['E', 'X', 'A', 'T'].forEach((cat) => {
+      const known = byCat[cat].filter((r) => r.verdict !== 'unknown');
+      const sum = known.reduce((s, r) => s + (r.verdict === 'pass' ? 1 : r.verdict === 'partial' ? 0.5 : 0), 0);
+      const pct = known.length ? Math.round((sum / known.length) * 100) : null;
+      catScores[cat] = pct;
+      if (pct !== null) { sumOfCats += pct; catCount++; }
+    });
+    const overall = catCount ? Math.round(sumOfCats / catCount) : null;
+    return { byCat, catScores, overall };
+  }
+
+  function itemRowHtml(r) {
+    const meta = ITEM_META[r.id] || { label: r.id };
+    const v = r.verdict && VERDICT_LABEL[r.verdict] ? r.verdict : 'unknown';
+    let html = '<div class="item-row"><div class="item-top">' +
+      '<span class="dot ' + v + '"></span>' +
+      '<span class="item-label">' + escapeHtml(meta.label) + '</span>' +
+      '<span class="verdict-tag ' + v + '">' + VERDICT_LABEL[v] + '</span></div>';
+    if (r.reason) html += '<div class="item-reason">' + escapeHtml(r.reason) + '</div>';
+    if (r.recommendation) html += '<div class="item-rec">→ ' + escapeHtml(r.recommendation) + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  function renderResults(results, pagesRead) {
+    const scores = computeScores(results);
+    $('overallNum').textContent = scores.overall !== null ? scores.overall : '—';
+    positionMarker($('overallMarker'), scores.overall);
+    $('pagesNote').textContent = pagesRead ? 'Прочитано страниц: ' + pagesRead : '';
+
+    const grid = $('categoryGrid');
+    grid.innerHTML = '';
+    ['E', 'X', 'A', 'T'].forEach((cat) => {
+      const items = scores.byCat[cat];
+      const pct = scores.catScores[cat];
+      const card = document.createElement('div');
+      card.className = 'cat-card';
+      let inner = '<div class="cat-head"><div class="cat-name"><span class="cat-letter">' + cat + '</span>' +
+        CAT_NAMES[cat] + '</div><div class="cat-score">' + (pct !== null ? pct + '%' : '—') + '</div></div>' +
+        '<div class="range-bar small"><div class="marker" style="display:' +
+        (pct !== null ? 'block' : 'none') + ';left:' + (pct || 0) + '%"></div></div>';
+      inner += items.map(itemRowHtml).join('');
+      card.innerHTML = inner;
+      grid.appendChild(card);
+    });
+    $('results').classList.add('active');
+  }
+
+  async function runAudit() {
+    $('errorRow').classList.remove('active');
+    const url = $('url').value.trim();
+    if (!url) { showError('Вставьте ссылку на сайт клиники.'); return; }
+    setLoading(true);
+    try {
+      const resp = await fetch('/api/audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Ошибка сервера');
+      renderResults(data.results || [], data.pagesRead);
+    } catch (err) {
+      showError(err && err.message ? err.message : 'Что-то пошло не так. Попробуйте ещё раз.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  $('runBtn').addEventListener('click', runAudit);
+  $('url').addEventListener('keydown', (e) => { if (e.key === 'Enter') runAudit(); });
+})();
+</script>
+</body>
+</html>
