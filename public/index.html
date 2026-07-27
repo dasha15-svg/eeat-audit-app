@@ -113,14 +113,17 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
 .ring-num .pct { font-size: 16px; color: var(--ink-muted); margin-left: 2px; }
 .ring-label { text-align: center; font-family: var(--display); font-size: 12.5px; font-weight: 600; color: var(--ink-muted); margin-top: 8px; }
 
-.mini-rings-row { display: flex; justify-content: center; gap: 28px; margin-top: 26px; padding-top: 26px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.mini-rings-row { display: flex; justify-content: center; gap: 32px; margin-top: 28px; padding-top: 28px; border-top: 1px solid var(--border); flex-wrap: wrap; }
 .mini-ring { text-align: center; }
-.mini-ring-wrap { position: relative; width: 76px; height: 76px; margin: 0 auto; }
-.mini-ring-wrap svg { width: 76px; height: 76px; transform: rotate(-90deg); }
-.mini-ring-bg { fill: none; stroke: var(--border); stroke-width: 7; }
-.mini-ring-fg { fill: none; stroke-linecap: round; transition: stroke-dashoffset 1s cubic-bezier(.2,.8,.2,1); }
-.mini-ring-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 14px; font-weight: 700; color: var(--ink); }
-.mini-ring-cat { font-family: var(--display); font-size: 11.5px; font-weight: 700; color: var(--ink-muted); margin-top: 6px; letter-spacing: .04em; }
+.mini-ring-wrap { position: relative; width: 116px; height: 116px; margin: 0 auto; }
+.mini-ring-wrap svg { width: 116px; height: 116px; transform: rotate(-90deg); overflow: visible; }
+.mini-ring-bg { fill: none; stroke: var(--border); stroke-width: 10; }
+.mini-ring-fg { fill: none; stroke-linecap: round; transition: stroke-dashoffset 1.1s cubic-bezier(.2,.8,.2,1); }
+.mini-ring-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 22px; font-weight: 700; color: var(--ink); }
+.mini-ring-cat { font-family: var(--display); font-size: 12.5px; font-weight: 700; color: var(--ink-muted); margin-top: 8px; letter-spacing: .04em; }
+.mini-ring-wrap.pop { animation: ring-pop .5s cubic-bezier(.34,1.56,.64,1); }
+@keyframes ring-pop { 0% { transform: scale(1); } 45% { transform: scale(1.09); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .mini-ring-wrap.pop { animation: none; } .mini-ring-fg { transition: none; } }
 
 .summary-text { font-size: 14.5px; color: var(--ink); line-height: 1.6; }
 
@@ -134,8 +137,7 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
 .priority-item { font-size: 13.5px; color: var(--ink); padding: 7px 0; line-height: 1.55; }
 .priority-item b { font-weight: 700; }
 
-.item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 760px) { .item-grid { grid-template-columns: 1fr; } }
+.item-grid { display: flex; flex-direction: column; gap: 12px; }
 .item-card {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
   padding: 16px 18px; border-left: 5px solid transparent;
@@ -175,7 +177,7 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     <div class="hint">Отримаєте детальний звіт по кожному критерію EEAT.</div>
     <div class="loading-row" id="loadingRow">
       <svg class="ekg" viewBox="0 0 100 26"><path d="M0,13 L28,13 L34,3 L40,23 L46,13 L100,13"/></svg>
-      <span id="loadingText">Аналізуємо сайт, це може зайняти до хвилини…</span>
+      <span id="loadingText">Перевіряємо сайт, результати з’являються поступово…</span>
     </div>
     <div class="error-row" id="errorRow"></div>
   </div>
@@ -224,6 +226,7 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     X12: { cat: 'X', label: 'Етапи послуги описані' },
     X13: { cat: 'X', label: 'Підготовка до процедури описана' },
     X14: { cat: 'X', label: 'Реабілітація описана' },
+    X15: { cat: 'X', label: 'Контент без зайвої води' },
     A7: { cat: 'A', label: 'Автор статті клікабельний, є сторінка' },
     A8: { cat: 'A', label: 'Джерела в статтях авторитетні' },
     T1: { cat: 'T', label: 'Сторінка «Про клініку» змістовна' },
@@ -237,7 +240,6 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     'SCHEMA-SERVICE': { cat: 'T', label: 'Мікророзмітка послуги' }
   };
   const VERDICT_LABEL = { pass: 'OK', partial: 'частково', fail: 'немає', unknown: 'немає даних' };
-  const SEVERITY_ORDER = { fail: 0, partial: 1, unknown: 2, pass: 3 };
   const $ = (id) => document.getElementById(id);
 
   function escapeHtml(str) {
@@ -283,19 +285,33 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
   }
 
   const CAT_NAMES = { E: 'Experience', X: 'Expertise', A: 'Authoritativeness', T: 'Trustworthiness' };
+  const CAT_DISPLAY_LETTER = { E: 'E', X: 'E', A: 'A', T: 'T' }; // EEAT has two E's: Experience and Expertise
 
   function miniRingHtml(letter, pct) {
-    const r = 30, circumference = 2 * Math.PI * r;
+    const r = 48, circumference = 2 * Math.PI * r;
     const offset = circumference * (1 - (pct || 0) / 100);
-    const color = pct === null || pct === undefined ? '#8B95A3' : (pct >= 70 ? '#1FA35C' : pct >= 40 ? '#E08A0E' : '#FB1E00');
+    const tier = pct === null || pct === undefined ? 'unknown' : pct >= 70 ? 'good' : pct >= 40 ? 'mid' : 'low';
+    const gradients = {
+      good: ['#4ADE80', '#1FA35C'],
+      mid: ['#FDBA47', '#E08A0E'],
+      low: ['#FF6B52', '#FB1E00'],
+      unknown: ['#C3C9D1', '#8B95A3']
+    };
+    const [c1, c2] = gradients[tier];
+    const gradId = 'ringGrad' + letter;
     return '<div class="mini-ring">' +
-      '<div class="mini-ring-wrap"><svg viewBox="0 0 76 76">' +
-      '<circle class="mini-ring-bg" cx="38" cy="38" r="' + r + '"/>' +
-      '<circle class="mini-ring-fg" cx="38" cy="38" r="' + r + '" stroke="' + color + '" stroke-width="7" ' +
+      '<div class="mini-ring-wrap" id="miniWrap' + letter + '"><svg viewBox="0 0 116 116">' +
+      '<defs><linearGradient id="' + gradId + '" x1="0%" y1="0%" x2="100%" y2="100%">' +
+      '<stop offset="0%" stop-color="' + c1 + '"/><stop offset="100%" stop-color="' + c2 + '"/></linearGradient>' +
+      '<filter id="glow' + letter + '" x="-50%" y="-50%" width="200%" height="200%">' +
+      '<feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="' + c2 + '" flood-opacity="0.45"/></filter></defs>' +
+      '<circle class="mini-ring-bg" cx="58" cy="58" r="' + r + '"/>' +
+      '<circle class="mini-ring-fg" cx="58" cy="58" r="' + r + '" stroke="url(#' + gradId + ')" stroke-width="10" ' +
+      'filter="url(#glow' + letter + ')" ' +
       'stroke-dasharray="' + circumference.toFixed(1) + '" stroke-dashoffset="' + circumference.toFixed(1) + '" ' +
       'data-target-offset="' + offset.toFixed(1) + '"/></svg>' +
       '<div class="mini-ring-num">' + (pct !== null && pct !== undefined ? pct + '%' : '—') + '</div></div>' +
-      '<div class="mini-ring-cat">' + letter + ' · ' + CAT_NAMES[letter] + '</div></div>';
+      '<div class="mini-ring-cat">' + CAT_DISPLAY_LETTER[letter] + ' · ' + CAT_NAMES[letter] + '</div></div>';
   }
 
   function renderMiniRings(catScores) {
@@ -304,6 +320,11 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     requestAnimationFrame(() => {
       holder.querySelectorAll('.mini-ring-fg').forEach((el) => {
         el.style.strokeDashoffset = el.getAttribute('data-target-offset');
+      });
+      holder.querySelectorAll('.mini-ring-wrap').forEach((el) => {
+        el.classList.remove('pop');
+        void el.offsetWidth; // restart the animation even if the class was already there
+        el.classList.add('pop');
       });
     });
   }
@@ -319,34 +340,25 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     return html;
   }
 
-  function renderResults(data) {
-    const results = data.results || [];
-    const known = results.filter((r) => ITEM_META[r.id]);
-    const sorted = known.slice().sort((a, b) => (SEVERITY_ORDER[a.verdict] ?? 2) - (SEVERITY_ORDER[b.verdict] ?? 2));
-
-    const { catScores, overall } = computeScores(results);
+  function updateOverview(allResults) {
+    const { catScores, overall } = computeScores(allResults);
     animateCount($('overallNum'), overall !== null ? overall : 0);
     const circumference = 395.8;
-    const ringFg = $('ringFg');
-    requestAnimationFrame(() => {
-      ringFg.style.strokeDashoffset = String(circumference * (1 - (overall || 0) / 100));
-    });
-    $('summaryText').textContent = data.summary || '';
+    $('ringFg').style.strokeDashoffset = String(circumference * (1 - (overall || 0) / 100));
     renderMiniRings(catScores);
+  }
 
-    const worst = sorted.filter((r) => r.verdict === 'fail').slice(0, 3);
+  function updatePriorityBox(allResults) {
+    const fails = allResults.filter((r) => r.verdict === 'fail' && ITEM_META[r.id]).slice(0, 3);
     const priorityBox = $('priorityBox');
-    if (worst.length) {
-      $('priorityList').innerHTML = worst.map((r) =>
+    if (fails.length) {
+      $('priorityList').innerHTML = fails.map((r) =>
         '<div class="priority-item"><b>' + escapeHtml((ITEM_META[r.id] || {}).label || r.id) + '.</b> ' + escapeHtml(r.why || '') + '</div>'
       ).join('');
       priorityBox.classList.add('active');
     } else {
       priorityBox.classList.remove('active');
     }
-
-    $('itemGrid').innerHTML = sorted.map(itemCardHtml).join('');
-    $('results').classList.add('active');
   }
 
   async function runAudit() {
@@ -354,15 +366,53 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     const url = $('url').value.trim();
     if (!url) { showError('Вставте посилання на сайт клініки.'); return; }
     setLoading(true);
+    $('itemGrid').innerHTML = '';
+    $('summaryText').textContent = '';
+    $('priorityBox').classList.remove('active');
+    $('results').classList.add('active');
+    const allResults = [];
+    let cardIndex = 0;
+
     try {
       const resp = await fetch('/api/audit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url })
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Помилка сервера');
-      renderResults(data);
+      if (!resp.ok) {
+        let msg = 'Помилка сервера';
+        try { msg = (await resp.json()).error || msg; } catch (e) { /* not JSON, use default */ }
+        throw new Error(msg);
+      }
+      if (!resp.body) throw new Error('Потокова відповідь не підтримується цим браузером.');
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let nl;
+        while ((nl = buffer.indexOf('\n')) !== -1) {
+          const line = buffer.slice(0, nl).trim();
+          buffer = buffer.slice(nl + 1);
+          if (!line) continue;
+          let obj;
+          try { obj = JSON.parse(line); } catch (e) { continue; }
+          if (obj.type === 'summary') {
+            $('summaryText').textContent = obj.text || '';
+          } else if (obj.type === 'result' && ITEM_META[obj.id]) {
+            allResults.push(obj);
+            $('itemGrid').insertAdjacentHTML('beforeend', itemCardHtml(obj, cardIndex++));
+            updateOverview(allResults);
+            updatePriorityBox(allResults);
+          } else if (obj.type === 'error') {
+            showError(obj.message || 'Щось пішло не так під час аналізу.');
+          }
+        }
+      }
     } catch (err) {
       showError(err && err.message ? err.message : 'Щось пішло не так. Спробуйте ще раз.');
     } finally {

@@ -10,7 +10,10 @@ Authoritativeness, Trustworthiness). Тобі передано текст зі �
 Пункти для оцінки:
 
 E2 — Результати роботи лікаря / кейси / досягнення: чи є конкретний кейс
-з деталями (діагноз/процедура/результат), а не загальна фраза про «великий досвід».
+одного пацієнта з деталями (діагноз/процедура/результат), прив'язаний
+саме до лікаря. Загальна статистика клініки в цілому (наприклад
+«N операцій на рік») це НЕ те саме, що кейс лікаря, і сама по собі не
+є підставою для verdict pass, навіть якщо цифра конкретна.
 E3 — Іменний коментар лікаря про послугу: чи є цитата, приписана
 конкретному лікарю на ім'я (не безособове «наші фахівці вважають»).
 E4 — Коментарі лікарів/експертів у блозі: чи є іменна атрибуція автора.
@@ -33,9 +36,14 @@ X12 — Етапи/процес надання послуги описані п�
 X13 — Етапи підготовки до процедури описані.
 X14 — Блок реабілітації/відновлення описаний.
 A7 — Автор/рецензент статті в блозі клікабельний і веде на сторінку з
-його даними.
+його даними. Формулюй висновок саме про перевірену сторінку (за назвою
+з блоку === ), а не про блог клініки в цілому, інші статті можуть
+відрізнятись.
 A8 — Посилання на джерела в статтях блогу — на авторитетні ресурси
 (медичні асоціації, .gov, PubMed), а не випадкові сайти.
+X15 — Контент (стаття блогу або опис послуги) без зайвої води: конкретні
+факти, цифри, деталі, а не загальні маркетингові фрази на кшталт
+«індивідуальний підхід» чи «найсучасніші технології» без розшифровки.
 T1 — Сторінка «Про клініку» існує і змістовна (не заглушка на
 2 речення).
 T2 — Сертифікати та ліцензії клініки згадані або показані.
@@ -62,18 +70,23 @@ AI-пошуку та пацієнтів. Це має звучати як поя�
 4. Кожне пояснення в why має бути унікальним за формулюванням, навіть
 якщо два пункти отримали однаковий verdict, не повторюй однакові
 конструкції речень.
-5. Додай окреме поле summary — загальний висновок 2-3 реченнями
+5. Спочатку виведи один рядок з загальним висновком 2-3 реченнями
 українською: що на сайті вже добре працює на довіру, що найбільше
 потребує уваги, без технічного жаргону, орієнтуючись на власника клініки,
 який хоче зрозуміти цінність без заглиблення в деталі.
-6. Відповідь — строго JSON, без преамбули, без markdown-обгортки (без
-потрійних зворотних лапок), без коментарів до або після JSON.
+6. Відповідь пиши у форматі NDJSON: кожен рядок, окремий, повністю
+самостійний JSON-об'єкт, без масиву й без обгортки навколо всього, без
+преамбули, без markdown-обгортки (без потрійних зворотних лапок).
 
-Формат відповіді:
-{"summary":"...","results":[{"id":"E2","verdict":"pass","why":"..."}]}
+Перший рядок:
+{"type":"summary","text":"..."}
 
-У results поверни рівно 22 об'єкти, по одному на кожен пункт зі списку
-вище, у тому ж порядку.`;
+Далі рівно 23 рядки, по одному на кожен пункт зі списку вище, у тому ж
+порядку:
+{"type":"result","id":"E2","verdict":"pass","why":"..."}
+
+Кожен рядок має бути дійсним JSON сам по собі. Не об'єднуй кілька
+об'єктів в один рядок.`;
 
 // Broader discovery than a single guess: categorize internal links into
 // buckets so one URL from the visitor still surfaces doctor/service/blog
@@ -88,7 +101,7 @@ const LINK_BUCKETS = {
 // Listing/index pages match the keywords above (e.g. .../category/blog/) but
 // aren't actual content, they're slow to load and add nothing to the audit.
 const EXCLUDE_PATTERNS = ['/category/', '/tag/', '/page/', '/author/', '/search/'];
-const MAX_PER_BUCKET = 1; // 1 per bucket keeps total pages, and total time, well inside the 60s ceiling
+const MAX_PER_BUCKET = 2; // streaming now means a slow run degrades gracefully instead of showing nothing
 const TIME_BUDGET_MS = 18000; // leaves real margin for the Claude call inside the 60s function ceiling
 
 function stripHtml(html) {
@@ -268,9 +281,21 @@ async function handleAudit(req, res) {
   const schemaResults = buildSchemaResults(allHtml);
   const combinedText = parts.join('\n\n');
 
-  let claudeData;
+  // Commit to a streaming response from here on: schema results go out
+  // immediately, then each line Claude finishes gets forwarded right away
+  // instead of waiting for the full 22-item response to complete.
+  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.status(200);
+
+  for (const sr of schemaResults) {
+    res.write(JSON.stringify({ type: 'result', id: sr.id, verdict: sr.verdict, why: sr.why }) + '\n');
+  }
+
+  let claudeResp;
   try {
-    const claudeResp = await fetch('https://api.anthropic.com/v1/messages', {
+    claudeResp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -281,51 +306,78 @@ async function handleAudit(req, res) {
         model: 'claude-sonnet-5',
         max_tokens: 4000,
         system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: combinedText }]
+        messages: [{ role: 'user', content: combinedText }],
+        stream: true
       })
     });
-    claudeData = await claudeResp.json();
   } catch (e) {
-    res.status(502).json({ error: 'Помилка звернення до Claude API' });
+    res.write(JSON.stringify({ type: 'error', message: 'Помилка звернення до Claude API' }) + '\n');
+    res.end();
     return;
   }
 
-  if (claudeData.error) {
-    res.status(502).json({ error: claudeData.error.message || 'Помилка Claude API' });
+  if (!claudeResp.ok || !claudeResp.body) {
+    res.write(JSON.stringify({ type: 'error', message: 'Помилка Claude API' }) + '\n');
+    res.end();
     return;
   }
 
-  const textBlocks = (claudeData.content || [])
-    .filter((b) => b.type === 'text')
-    .map((b) => b.text)
-    .join('\n');
-  let clean = textBlocks.replace(/```json|```/g, '').trim();
+  const reader = claudeResp.body.getReader();
+  const decoder = new TextDecoder();
+  let sseBuffer = '';
+  let textBuffer = '';
 
-  let parsed;
-  try {
-    parsed = JSON.parse(clean);
-  } catch (e) {
-    const start = clean.indexOf('{');
-    const end = clean.lastIndexOf('}');
-    if (start !== -1 && end !== -1 && end > start) {
+  function flushCompleteLines() {
+    let nl;
+    while ((nl = textBuffer.indexOf('\n')) !== -1) {
+      const raw = textBuffer.slice(0, nl).trim();
+      textBuffer = textBuffer.slice(nl + 1);
+      const line = raw.replace(/```json|```/g, '').trim();
+      if (!line) continue;
       try {
-        parsed = JSON.parse(clean.slice(start, end + 1));
-      } catch (e2) {
-        res.status(502).json({ error: 'Не вдалося розібрати відповідь моделі. Спробуйте ще раз.' });
-        return;
+        const obj = JSON.parse(line);
+        res.write(JSON.stringify(obj) + '\n');
+      } catch (e) {
+        // an incomplete or malformed line, worst case this one item is skipped
       }
-    } else {
-      res.status(502).json({ error: 'Не вдалося розібрати відповідь моделі. Спробуйте ще раз.' });
-      return;
     }
   }
 
-  res.status(200).json({
-    results: [...(parsed.results || []), ...schemaResults],
-    summary: parsed.summary || null,
-    pagesRead: parts.length,
-    pagesSummary
-  });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sseBuffer += decoder.decode(value, { stream: true });
+      const events = sseBuffer.split('\n\n');
+      sseBuffer = events.pop();
+      for (const evt of events) {
+        const dataLine = evt.split('\n').find((l) => l.startsWith('data:'));
+        if (!dataLine) continue;
+        let parsedEvt;
+        try {
+          parsedEvt = JSON.parse(dataLine.slice(5).trim());
+        } catch (e) {
+          continue;
+        }
+        if (parsedEvt.type === 'content_block_delta' && parsedEvt.delta && typeof parsedEvt.delta.text === 'string') {
+          textBuffer += parsedEvt.delta.text;
+          flushCompleteLines();
+        }
+      }
+    }
+    const trailing = textBuffer.replace(/```json|```/g, '').trim();
+    if (trailing) {
+      try {
+        res.write(JSON.stringify(JSON.parse(trailing)) + '\n');
+      } catch (e) {
+        // trailing partial line with no final newline, nothing more to recover
+      }
+    }
+  } catch (e) {
+    res.write(JSON.stringify({ type: 'error', message: 'З’єднання перервалося під час аналізу.' }) + '\n');
+  }
+
+  res.end();
 }
 
 module.exports = async function handler(req, res) {
@@ -335,6 +387,8 @@ module.exports = async function handler(req, res) {
     console.error('Unhandled error in /api/audit:', e);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Неочікувана помилка на сервері. Спробуйте ще раз.' });
+    } else {
+      try { res.end(); } catch (e2) { /* connection already gone */ }
     }
   }
 };
