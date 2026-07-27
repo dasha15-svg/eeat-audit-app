@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<html lang="uk">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EEAT-аудит клініки — ILION Medical Digital</title>
+<title>EEAT-аудит клиники</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root {
   --bg: #EEF2F2;
   --bg-card: #FFFFFF;
-  --ink: #0F2027;
+  --ink: #12232B;
   --ink-muted: #5C6B70;
-  --accent: #0E7C86;
-  --accent-deep: #0A5C64;
-  --accent-light: #17A6AE;
+  --accent: #0F7C86;
   --accent-tint: #DCEEEF;
   --pass: #2F8F5B;
   --pass-tint: #E3F3EA;
@@ -37,33 +35,14 @@ body {
     linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 100% 28px,
     var(--bg);
   min-height: 100vh;
-  padding: 40px 16px 48px;
+  padding: 48px 16px;
 }
 .wrap { max-width: 760px; margin: 0 auto; }
-
-.brand-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
-.brand-mark {
-  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent-deep));
-  color: #fff; font-family: var(--mono); font-weight: 700; font-size: 15px;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 2px 6px rgba(10,92,100,.25);
-}
-.brand-name { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: .1em; color: var(--ink); }
-
 .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--accent); font-weight: 600; margin-bottom: 10px; }
-h1 { font-size: 28px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em; }
+h1 { font-size: 28px; font-weight: 700; margin: 0 0 8px; letter-spacing: -0.01em; }
 .lede { color: var(--ink-muted); font-size: 15px; line-height: 1.5; margin: 0 0 24px; max-width: 56ch; }
 
-.input-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-  padding: 20px; box-shadow: 0 1px 2px rgba(15,32,39,.04);
-  position: relative; overflow: hidden;
-}
-.input-card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, var(--accent-light), var(--accent), var(--accent-deep));
-}
+.input-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: 0 1px 2px rgba(18,35,43,.04); }
 .field-label { display: block; font-size: 12px; color: var(--ink-muted); margin-bottom: 6px; }
 .url-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .url-input {
@@ -81,12 +60,11 @@ h1 { font-size: 28px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em
 }
 .url-input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
 button {
-  font-family: var(--sans); font-size: 13.5px; font-weight: 700; border-radius: 8px;
-  padding: 12px 22px; cursor: pointer; border: 1px solid transparent;
-  background: linear-gradient(135deg, var(--accent-light), var(--accent-deep));
-  color: #fff; transition: filter .15s, transform .1s;
+  font-family: var(--sans); font-size: 13.5px; font-weight: 600; border-radius: 8px;
+  padding: 12px 20px; cursor: pointer; border: 1px solid transparent;
+  background: var(--ink); color: #fff; transition: background .15s, transform .1s;
 }
-button:hover { filter: brightness(1.08); }
+button:hover { background: var(--accent); }
 button:active { transform: scale(0.98); }
 button:disabled { opacity: .5; cursor: default; }
 button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -103,16 +81,9 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .results { display: none; margin-top: 32px; }
 .results.active { display: block; }
-.overall {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-  padding: 20px 22px; margin-bottom: 18px; position: relative; overflow: hidden;
-}
-.overall::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-  background: linear-gradient(90deg, var(--accent-light), var(--accent), var(--accent-deep));
-}
-.overall-score { font-family: var(--mono); font-size: 42px; font-weight: 700; line-height: 1; background: linear-gradient(135deg, var(--ink), var(--accent-deep)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.overall-score .pct { font-size: 20px; color: var(--ink-muted); font-weight: 500; -webkit-text-fill-color: var(--ink-muted); }
+.overall { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; margin-bottom: 18px; }
+.overall-score { font-family: var(--mono); font-size: 42px; font-weight: 700; line-height: 1; }
+.overall-score .pct { font-size: 20px; color: var(--ink-muted); font-weight: 500; }
 .overall-label { font-size: 12px; color: var(--ink-muted); margin: 4px 0 14px; text-transform: uppercase; letter-spacing: .06em; }
 .pages-note { font-size: 11.5px; color: var(--ink-muted); margin-top: 10px; }
 
@@ -147,30 +118,25 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </head>
 <body>
 <div class="wrap">
-  <div class="brand-bar">
-    <div class="brand-mark">I</div>
-    <div class="brand-name">ILION MEDICAL DIGITAL</div>
-  </div>
-
   <div class="eyebrow">EEAT AUDIT</div>
-  <h1>Перевірте свій сайт на EEAT</h1>
-  <p class="lede">Дізнайтесь, чи відповідає ваш сайт факторам довіри для Google та ШІ — вже сьогодні, за кілька хвилин.</p>
+  <h1>Оценка доверия клиники</h1>
+  <p class="lede">Вставьте ссылку на медицинский сайт — Claude прочитает его и оценит по чек-листу EEAT.</p>
 
   <div class="input-card">
-    <label class="field-label" for="url">Посилання на сайт клініки</label>
+    <label class="field-label" for="url">Ссылка на сайт клиники</label>
     <div class="url-row">
       <input type="text" id="url" class="url-input" placeholder="https://clinic-example.com">
-      <button id="runBtn" type="button">Перевірити сайт</button>
+      <button id="runBtn" type="button">Запустить аудит</button>
     </div>
-    <div class="hint">Отримаєте детальний звіт по кожному критерію EEAT.</div>
-    <div class="loading-row" id="loadingRow"><div class="scan-line"></div><span id="loadingText">Аналізуємо сайт…</span></div>
+    <div class="hint">Прочитаем главную и, если найдём, страницу врачей/о клинике — автоматически.</div>
+    <div class="loading-row" id="loadingRow"><div class="scan-line"></div><span id="loadingText">Читаю сайт…</span></div>
     <div class="error-row" id="errorRow"></div>
   </div>
 
   <div class="results" id="results">
     <div class="overall">
       <div class="overall-score"><span id="overallNum">—</span><span class="pct">%</span></div>
-      <div class="overall-label">Відповідність критеріям EEAT</div>
+      <div class="overall-label">Соответствие EEAT-критериям</div>
       <div class="range-bar"><div class="marker" id="overallMarker"></div></div>
       <div class="pages-note" id="pagesNote"></div>
     </div>
@@ -181,34 +147,34 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 <script>
 (function () {
   const ITEM_META = {
-    E2: { cat: 'E', label: 'Кейси і результати роботи лікаря' },
-    E3: { cat: 'E', label: 'Іменний коментар лікаря' },
-    E4: { cat: 'E', label: 'Експертні коментарі в блозі' },
-    X3: { cat: 'X', label: 'Освіта лікаря вказана конкретно' },
-    X4: { cat: 'X', label: 'Стаж лікаря вказаний конкретно' },
-    X6: { cat: 'X', label: 'Сертифікати/ліцензії лікаря згадані' },
-    X7: { cat: 'X', label: 'Пріоритетні напрямки змістовні' },
-    X8: { cat: 'X', label: 'Обладнання назване конкретно' },
-    X9: { cat: 'X', label: 'SEO-текст про клініку змістовний' },
-    X10: { cat: 'X', label: 'Показання/протипоказання конкретні' },
-    X11: { cat: 'X', label: 'Симптоми/показання інформативні' },
-    X12: { cat: 'X', label: 'Етапи послуги описані' },
-    X13: { cat: 'X', label: 'Підготовка до процедури описана' },
-    X14: { cat: 'X', label: 'Реабілітація описана' },
-    A7: { cat: 'A', label: 'Автор статті клікабельний, є сторінка' },
-    A8: { cat: 'A', label: 'Джерела в статтях авторитетні' },
-    T1: { cat: 'T', label: 'Сторінка «Про клініку» змістовна' },
-    T2: { cat: 'T', label: 'Сертифікати і ліцензії клініки показані' },
-    T4: { cat: 'T', label: 'Відгуки виглядають справжніми' },
-    T9: { cat: 'T', label: 'Ліцензія у футері конкретна' },
-    T11: { cat: 'T', label: 'Медичний дисклеймер доречний' },
-    T17: { cat: 'T', label: 'FAQ відповідає по суті' },
-    'SCHEMA-ORG': { cat: 'T', label: 'Мікророзмітка MedicalOrganization' },
-    'SCHEMA-DOC': { cat: 'T', label: 'Мікророзмітка лікаря' },
-    'SCHEMA-SERVICE': { cat: 'T', label: 'Мікророзмітка послуги' }
+    E2: { cat: 'E', label: 'Кейсы и результаты работы врача' },
+    E3: { cat: 'E', label: 'Именной комментарий врача' },
+    E4: { cat: 'E', label: 'Экспертные комментарии в блоге' },
+    X3: { cat: 'X', label: 'Образование врача указано конкретно' },
+    X4: { cat: 'X', label: 'Стаж врача указан конкретно' },
+    X6: { cat: 'X', label: 'Сертификаты/лицензии врача упомянуты' },
+    X7: { cat: 'X', label: 'Приоритетные направления содержательны' },
+    X8: { cat: 'X', label: 'Оборудование названо конкретно' },
+    X9: { cat: 'X', label: 'SEO-текст о клинике содержательный' },
+    X10: { cat: 'X', label: 'Показания/противопоказания конкретны' },
+    X11: { cat: 'X', label: 'Симптомы/показания информативны' },
+    X12: { cat: 'X', label: 'Этапы услуги описаны' },
+    X13: { cat: 'X', label: 'Подготовка к процедуре описана' },
+    X14: { cat: 'X', label: 'Реабилитация описана' },
+    A7: { cat: 'A', label: 'Автор статьи кликабелен, есть страница' },
+    A8: { cat: 'A', label: 'Источники в статьях авторитетные' },
+    T1: { cat: 'T', label: 'Страница «Про клинику» содержательна' },
+    T2: { cat: 'T', label: 'Сертификаты и лицензии клиники показаны' },
+    T4: { cat: 'T', label: 'Отзывы выглядят подлинными' },
+    T9: { cat: 'T', label: 'Лицензия в футере конкретная' },
+    T11: { cat: 'T', label: 'Медицинский дисклеймер уместен' },
+    T17: { cat: 'T', label: 'FAQ отвечает по существу' },
+    'SCHEMA-ORG': { cat: 'T', label: 'Микроразметка MedicalOrganization' },
+    'SCHEMA-DOC': { cat: 'T', label: 'Микроразметка врача' },
+    'SCHEMA-SERVICE': { cat: 'T', label: 'Микроразметка услуги' }
   };
   const CAT_NAMES = { E: 'Experience', X: 'Expertise', A: 'Authoritativeness', T: 'Trustworthiness' };
-  const VERDICT_LABEL = { pass: 'OK', partial: 'частково', fail: 'немає', unknown: 'немає даних' };
+  const VERDICT_LABEL = { pass: 'ок', partial: 'частично', fail: 'нет', unknown: 'нет данных' };
   const $ = (id) => document.getElementById(id);
 
   function escapeHtml(str) {
@@ -267,7 +233,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     const scores = computeScores(results);
     $('overallNum').textContent = scores.overall !== null ? scores.overall : '—';
     positionMarker($('overallMarker'), scores.overall);
-    $('pagesNote').textContent = pagesRead ? 'Прочитано сторінок: ' + pagesRead : '';
+    $('pagesNote').textContent = pagesRead ? 'Прочитано страниц: ' + pagesRead : '';
 
     const grid = $('categoryGrid');
     grid.innerHTML = '';
@@ -290,7 +256,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   async function runAudit() {
     $('errorRow').classList.remove('active');
     const url = $('url').value.trim();
-    if (!url) { showError('Вставте посилання на сайт клініки.'); return; }
+    if (!url) { showError('Вставьте ссылку на сайт клиники.'); return; }
     setLoading(true);
     try {
       const resp = await fetch('/api/audit', {
@@ -299,10 +265,10 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         body: JSON.stringify({ url })
       });
       const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || 'Помилка сервера');
+      if (!resp.ok) throw new Error(data.error || 'Ошибка сервера');
       renderResults(data.results || [], data.pagesRead);
     } catch (err) {
-      showError(err && err.message ? err.message : 'Щось пішло не так. Спробуйте ще раз.');
+      showError(err && err.message ? err.message : 'Что-то пошло не так. Попробуйте ещё раз.');
     } finally {
       setLoading(false);
     }
