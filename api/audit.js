@@ -115,7 +115,8 @@ const LISTING_SLUGS = new Set([
   'catalog', 'katalog', 'products', 'shop', 'blog', 'articles', 'stati', 'statti', 'novyny', 'news'
 ]);
 const MAX_PER_BUCKET = 2; // streaming now means a slow run degrades gracefully instead of showing nothing
-const TIME_BUDGET_MS = 18000; // leaves real margin for the Claude call inside the 60s function ceiling
+const TIME_BUDGET_MS = 12000; // fetch phase — leaves much more margin for a slow Claude response
+const HARD_DEADLINE_MS = 50000; // absolute ceiling for the whole request, well under the 60s platform kill
 
 function stripHtml(html) {
   return html
@@ -220,7 +221,7 @@ function extractTitle(html) {
 
 async function fetchPage(url, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs || 4500);
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 3500);
   try {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EEATAuditBot/1.0)' },
@@ -382,6 +383,10 @@ async function handleAudit(url, controller, encoder) {
 
   try {
     while (true) {
+      if (Date.now() - START > HARD_DEADLINE_MS) {
+        send({ type: 'error', message: 'Аналіз зайняв надто багато часу, показані пункти, які встигли прийти.' });
+        break;
+      }
       const { done, value } = await reader.read();
       if (done) break;
       sseBuffer += decoder.decode(value, { stream: true });
