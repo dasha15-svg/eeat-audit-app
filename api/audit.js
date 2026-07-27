@@ -85,8 +85,11 @@ const LINK_BUCKETS = {
   service: ['uslug', 'poslug', 'service', 'lechenie', 'likuvannya', 'hirurg', 'terapiya', 'diagnostika'],
   blog: ['blog', 'stati', 'статт', /\/20\d\d\/\d\d\/\d\d\//]
 };
-const MAX_PER_BUCKET = 2;
-const TIME_BUDGET_MS = 35000; // leaves headroom for the Claude call inside the 60s function ceiling
+// Listing/index pages match the keywords above (e.g. .../category/blog/) but
+// aren't actual content, they're slow to load and add nothing to the audit.
+const EXCLUDE_PATTERNS = ['/category/', '/tag/', '/page/', '/author/', '/search/'];
+const MAX_PER_BUCKET = 1; // 1 per bucket keeps total pages, and total time, well inside the 60s ceiling
+const TIME_BUDGET_MS = 18000; // leaves real margin for the Claude call inside the 60s function ceiling
 
 function stripHtml(html) {
   return html
@@ -114,6 +117,7 @@ function categorizeLinks(html, baseUrl) {
     if (new URL(abs).hostname !== base.hostname) continue;
     if (seen.has(abs)) continue;
     const lower = abs.toLowerCase();
+    if (EXCLUDE_PATTERNS.some((p) => lower.includes(p))) continue;
     for (const bucket of Object.keys(LINK_BUCKETS)) {
       if (buckets[bucket].length >= MAX_PER_BUCKET) continue;
       const matched = LINK_BUCKETS[bucket].some((kw) =>
@@ -148,7 +152,7 @@ function extractTitle(html) {
 
 async function fetchPage(url, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs || 6000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 4500);
   try {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EEATAuditBot/1.0)' },
@@ -219,7 +223,7 @@ function buildSchemaResults(allHtml) {
   ];
 }
 
-module.exports = async function handler(req, res) {
+async function handleAudit(req, res) {
   const START = Date.now();
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -322,4 +326,15 @@ module.exports = async function handler(req, res) {
     pagesRead: parts.length,
     pagesSummary
   });
+}
+
+module.exports = async function handler(req, res) {
+  try {
+    await handleAudit(req, res);
+  } catch (e) {
+    console.error('Unhandled error in /api/audit:', e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Неочікувана помилка на сервері. Спробуйте ще раз.' });
+    }
+  }
 };
