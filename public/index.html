@@ -377,9 +377,10 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     $('itemGrid').innerHTML = '';
     $('summaryText').textContent = '';
     $('priorityBox').classList.remove('active');
-    $('results').classList.add('active');
+    $('results').classList.remove('active');
     const allResults = [];
     let cardIndex = 0;
+    let revealed = false;
 
     try {
       const resp = await fetch('/api/audit', {
@@ -413,6 +414,7 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
             $('summaryText').textContent = obj.text || '';
           } else if (obj.type === 'result' && ITEM_META[obj.id]) {
             allResults.push(obj);
+            if (!revealed) { $('results').classList.add('active'); revealed = true; }
             $('itemGrid').insertAdjacentHTML('beforeend', itemCardHtml(obj, cardIndex++));
             $('loadingText').textContent = 'Перевірили: ' + ITEM_META[obj.id].label + '. Далі…';
             updateOverview(allResults);
