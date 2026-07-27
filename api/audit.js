@@ -50,20 +50,29 @@ T17 — Блок FAQ на сторінці послуги є і відповід
 
 Правила:
 1. Оцінюй СТРОГО за переданим текстом. Якщо даних для оцінки пункту
-немає — verdict = "unknown". Ніколи не вигадуй і не додумуй те, чого
+немає, verdict = "unknown". Ніколи не вигадуй і не додумуй те, чого
 немає в тексті.
 2. Для кожного пункту поверни: id, verdict (pass / partial / fail / unknown),
-why (українською, 20-30 слів) — одним реченням поєднай: що саме знайдено
-на сайті (або що відсутнє) І чому цей фактор важливий для довіри Google,
+why (українською, 20-30 слів), одним реченням поєднай: що саме знайдено
+на сайті (або що відсутнє) і чому цей фактор важливий для довіри Google,
 AI-пошуку та пацієнтів. Це має звучати як пояснення для власника клініки,
 не як суха технічна нотатка.
-3. Відповідь — строго JSON, без преамбули, без markdown-обгортки (без
+3. НЕ використовуй тире (—) у полі why. Пиши звичайними реченнями через
+крапку або кому.
+4. Кожне пояснення в why має бути унікальним за формулюванням, навіть
+якщо два пункти отримали однаковий verdict, не повторюй однакові
+конструкції речень.
+5. Додай окреме поле summary — загальний висновок 2-3 реченнями
+українською: що на сайті вже добре працює на довіру, що найбільше
+потребує уваги, без технічного жаргону, орієнтуючись на власника клініки,
+який хоче зрозуміти цінність без заглиблення в деталі.
+6. Відповідь — строго JSON, без преамбули, без markdown-обгортки (без
 потрійних зворотних лапок), без коментарів до або після JSON.
 
 Формат відповіді:
-{"results":[{"id":"E2","verdict":"pass","why":"..."}]}
+{"summary":"...","results":[{"id":"E2","verdict":"pass","why":"..."}]}
 
-Поверни рівно 22 об'єкти в results — по одному на кожен пункт зі списку
+У results поверни рівно 22 об'єкти, по одному на кожен пункт зі списку
 вище, у тому ж порядку.`;
 
 // Broader discovery than a single guess: categorize internal links into
@@ -122,12 +131,19 @@ function categorizeLinks(html, baseUrl) {
 
 function pickPagesToFetch(buckets) {
   const labeled = [];
-  buckets.about.forEach(() => {});
-  if (buckets.about[0]) labeled.push({ url: buckets.about[0], label: 'Про клініку' });
-  buckets.doctor.forEach((u, i) => labeled.push({ url: u, label: 'Лікар ' + (i + 1) }));
-  buckets.service.forEach((u, i) => labeled.push({ url: u, label: 'Послуга ' + (i + 1) }));
-  buckets.blog.forEach((u, i) => labeled.push({ url: u, label: 'Стаття блогу ' + (i + 1) }));
+  if (buckets.about[0]) labeled.push({ url: buckets.about[0], fallback: 'Про клініку' });
+  buckets.doctor.forEach((u, i) => labeled.push({ url: u, fallback: 'Лікар ' + (i + 1) }));
+  buckets.service.forEach((u, i) => labeled.push({ url: u, fallback: 'Послуга ' + (i + 1) }));
+  buckets.blog.forEach((u, i) => labeled.push({ url: u, fallback: 'Стаття блогу ' + (i + 1) }));
   return labeled;
+}
+
+function extractTitle(html) {
+  let m = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  if (!m) m = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+  if (!m) return null;
+  const title = stripHtml(m[1]).slice(0, 70).trim();
+  return title || null;
 }
 
 async function fetchPage(url, timeoutMs) {
@@ -174,18 +190,33 @@ function buildSchemaResults(allHtml) {
   allHtml.forEach((html) => extractSchemaTypes(html).forEach((t) => types.add(t)));
   const hasType = (re) => Array.from(types).some((t) => re.test(t));
 
-  const checks = [
-    { id: 'SCHEMA-ORG', label: 'MedicalOrganization', ok: hasType(/MedicalOrganization|MedicalClinic/i) },
-    { id: 'SCHEMA-DOC', label: 'лікаря (Physician/Person)', ok: hasType(/Physician|^Person$/i) },
-    { id: 'SCHEMA-SERVICE', label: 'послуги (MedicalProcedure)', ok: hasType(/MedicalProcedure/i) }
+  const hasOrg = hasType(/MedicalOrganization|MedicalClinic/i);
+  const hasDoc = hasType(/Physician|^Person$/i);
+  const hasService = hasType(/MedicalProcedure/i);
+
+  return [
+    {
+      id: 'SCHEMA-ORG',
+      verdict: hasOrg ? 'pass' : 'fail',
+      why: hasOrg
+        ? 'Сайт позначений як MedicalOrganization у коді сторінки, тому Google і AI одразу розуміють, що це медичний заклад, а не блог чи інтернет-магазин.'
+        : 'У коді сторінки немає позначки MedicalOrganization, тому пошуковим системам і AI доводиться здогадуватись, що це взагалі за сайт, замість того щоб знати це напевно.'
+    },
+    {
+      id: 'SCHEMA-DOC',
+      verdict: hasDoc ? 'pass' : 'fail',
+      why: hasDoc
+        ? 'Лікарі позначені в коді як окремі персони, це дозволяє Google показувати їхні імена та кваліфікацію прямо у видачі, а не просто текстом на сторінці.'
+        : 'Лікарі ніде не позначені в коді як окремі персони, через це Google не може винести їхні імена й кваліфікацію у видачу, навіть якщо на сторінці все написано.'
+    },
+    {
+      id: 'SCHEMA-SERVICE',
+      verdict: hasService ? 'pass' : 'fail',
+      why: hasService
+        ? 'Послуги оформлені в коді як MedicalProcedure, тож AI-пошуковики можуть точно зіставити запит пацієнта з конкретною процедурою на сайті.'
+        : 'Послуги не оформлені в коді як MedicalProcedure, тому AI-пошуковикам складніше зрозуміти, яка саме процедура описана на сторінці, навіть якщо текст цілком зрозумілий людині.'
+    }
   ];
-  return checks.map((c) => ({
-    id: c.id,
-    verdict: c.ok ? 'pass' : 'fail',
-    why: c.ok
-      ? 'Мікророзмітка ' + c.label + ' знайдена в коді сторінки — це допомагає Google і AI точно розпізнати, що це за сторінка.'
-      : 'Мікророзмітка ' + c.label + ' не знайдена — без неї Google і AI гірше розуміють структуру сторінки й довіряють їй менше.'
-  }));
 }
 
 module.exports = async function handler(req, res) {
@@ -222,8 +253,9 @@ module.exports = async function handler(req, res) {
     try {
       const html = await fetchPage(page.url);
       allHtml.push(html);
-      parts.push('=== ' + page.label + ' ===\n' + stripHtml(html).slice(0, 6000));
-      pagesSummary.push(page.label);
+      const label = extractTitle(html) || page.fallback;
+      parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 6000));
+      pagesSummary.push(label);
     } catch (e) {
       // a related page failing to load isn't fatal — skip it
     }
@@ -286,6 +318,7 @@ module.exports = async function handler(req, res) {
 
   res.status(200).json({
     results: [...(parsed.results || []), ...schemaResults],
+    summary: parsed.summary || null,
     pagesRead: parts.length,
     pagesSummary
   });

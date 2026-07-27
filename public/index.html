@@ -37,9 +37,9 @@ body {
     linear-gradient(var(--border) 1px, transparent 1px) 0 0 / 100% 28px,
     var(--bg);
   min-height: 100vh;
-  padding: 40px 16px 48px;
+  padding: 40px 24px 56px;
 }
-.wrap { max-width: 720px; margin: 0 auto; }
+.wrap { max-width: 940px; margin: 0 auto; }
 
 .brand-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
 .brand-mark {
@@ -52,12 +52,12 @@ body {
 .brand-name { font-family: var(--mono); font-size: 12px; font-weight: 600; letter-spacing: .1em; color: var(--ink); }
 
 .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; color: var(--accent); font-weight: 600; margin-bottom: 10px; }
-h1 { font-size: 28px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em; }
-.lede { color: var(--ink-muted); font-size: 15px; line-height: 1.5; margin: 0 0 24px; max-width: 56ch; }
+h1 { font-size: 30px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em; }
+.lede { color: var(--ink-muted); font-size: 15px; line-height: 1.5; margin: 0 0 24px; max-width: 60ch; }
 
 .input-card {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-  padding: 20px; box-shadow: 0 1px 2px rgba(15,32,39,.04);
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 22px; box-shadow: 0 1px 3px rgba(15,32,39,.05);
   position: relative; overflow: hidden;
 }
 .input-card::before {
@@ -68,13 +68,13 @@ h1 { font-size: 28px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em
 .url-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .url-input {
   flex: 1; min-width: 220px; font-family: var(--mono); font-size: 13.5px; color: var(--ink);
-  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-  padding: 12px 14px; outline: none; transition: border-color .15s, box-shadow .15s;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 9px;
+  padding: 13px 14px; outline: none; transition: border-color .15s, box-shadow .15s;
 }
 .url-input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
 button {
-  font-family: var(--sans); font-size: 13.5px; font-weight: 700; border-radius: 8px;
-  padding: 12px 22px; cursor: pointer; border: 1px solid transparent;
+  font-family: var(--sans); font-size: 13.5px; font-weight: 700; border-radius: 9px;
+  padding: 13px 24px; cursor: pointer; border: 1px solid transparent;
   background: linear-gradient(135deg, var(--accent-light), var(--accent-deep));
   color: #fff; transition: filter .15s, transform .1s;
 }
@@ -95,47 +95,59 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .results { display: none; margin-top: 32px; }
 .results.active { display: block; }
-.overall {
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-  padding: 20px 22px; margin-bottom: 14px; position: relative; overflow: hidden;
+
+.overview-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px;
+  padding: 26px; margin-bottom: 16px; position: relative; overflow: hidden;
+  display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center;
 }
-.overall::before {
+.overview-card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
   background: linear-gradient(90deg, var(--accent-light), var(--accent), var(--accent-deep));
 }
-.overall-score { font-family: var(--mono); font-size: 42px; font-weight: 700; line-height: 1; background: linear-gradient(135deg, var(--ink), var(--accent-deep)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
-.overall-score .pct { font-size: 20px; color: var(--ink-muted); font-weight: 500; -webkit-text-fill-color: var(--ink-muted); }
+@media (max-width: 680px) { .overview-card { grid-template-columns: 1fr; } .radar-wrap { justify-self: center; } }
+.overall-score { font-family: var(--mono); font-size: 46px; font-weight: 700; line-height: 1; background: linear-gradient(135deg, var(--ink), var(--accent-deep)); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+.overall-score .pct { font-size: 22px; color: var(--ink-muted); font-weight: 500; -webkit-text-fill-color: var(--ink-muted); }
 .overall-label { font-size: 12px; color: var(--ink-muted); margin: 4px 0 14px; text-transform: uppercase; letter-spacing: .06em; }
-.pages-note { font-size: 11.5px; color: var(--ink-muted); margin-top: 10px; }
-
-.range-bar { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--fail-tint) 0%, var(--fail-tint) 40%, var(--partial-tint) 40%, var(--partial-tint) 70%, var(--pass-tint) 70%, var(--pass-tint) 100%); }
-.range-bar .marker { position: absolute; top: 50%; width: 3px; height: 16px; background: var(--ink); border-radius: 2px; transform: translate(-50%, -50%); display: none; }
+.range-bar { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--fail-tint) 0%, var(--fail-tint) 40%, var(--partial-tint) 40%, var(--partial-tint) 70%, var(--pass-tint) 70%, var(--pass-tint) 100%); margin-bottom: 16px; }
+.range-bar .marker { position: absolute; top: 50%; width: 3px; height: 16px; background: var(--ink); border-radius: 2px; transform: translate(-50%, -50%) scaleY(0); transition: transform .6s cubic-bezier(.2,.8,.2,1); }
+.range-bar .marker.show { transform: translate(-50%, -50%) scaleY(1); }
+.summary-text { font-size: 13.5px; color: var(--ink); line-height: 1.55; }
+.radar-wrap { text-align: center; }
+.radar-caption { font-size: 10px; color: var(--ink-muted); font-family: var(--mono); letter-spacing: .06em; margin-top: 2px; }
 
 .priority-box {
   background: linear-gradient(135deg, #FFF9EF, var(--partial-tint));
-  border: 1px solid #EFD9A8; border-radius: 14px; padding: 16px 18px; margin-bottom: 14px;
+  border: 1px solid #EFD9A8; border-radius: 16px; padding: 18px 20px; margin-bottom: 16px;
   display: none;
 }
 .priority-box.active { display: block; }
-.priority-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
-.priority-item { font-size: 12.5px; color: var(--ink); padding: 5px 0; }
+.priority-title { font-size: 13.5px; font-weight: 700; margin-bottom: 10px; }
+.priority-item { font-size: 12.5px; color: var(--ink); padding: 6px 0; line-height: 1.5; }
 .priority-item b { font-weight: 600; }
 
-.item-list { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 6px 18px; }
-.item-row { padding: 12px 0 12px 12px; border-top: 1px solid var(--border); border-left: 3px solid transparent; }
-.item-row:first-child { border-top: none; }
-.item-row.pass { border-left-color: var(--pass); }
-.item-row.partial { border-left-color: var(--partial); }
-.item-row.fail { border-left-color: var(--fail); }
-.item-row.unknown { border-left-color: var(--unknown); }
-.item-top { display: flex; align-items: center; gap: 8px; }
-.item-label { font-size: 13px; font-weight: 600; flex: 1; }
-.verdict-tag { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 680px) { .item-grid { grid-template-columns: 1fr; } }
+.item-card {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 16px; border-left: 4px solid transparent;
+  opacity: 0; transform: translateY(6px);
+  animation: itemIn .35s ease forwards;
+}
+@keyframes itemIn { to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .item-card { animation: none; opacity: 1; transform: none; } }
+.item-card.pass { border-left-color: var(--pass); }
+.item-card.partial { border-left-color: var(--partial); }
+.item-card.fail { border-left-color: var(--fail); }
+.item-card.unknown { border-left-color: var(--unknown); }
+.item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.item-label { font-size: 13px; font-weight: 600; }
+.verdict-tag { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
 .verdict-tag.pass { background: var(--pass-tint); color: var(--pass); }
 .verdict-tag.partial { background: var(--partial-tint); color: var(--partial); }
 .verdict-tag.fail { background: var(--fail-tint); color: var(--fail); }
 .verdict-tag.unknown { background: var(--unknown-tint); color: var(--unknown); }
-.item-why { font-size: 12.5px; color: var(--ink-muted); margin-top: 5px; line-height: 1.5; }
+.item-why { font-size: 12.5px; color: var(--ink-muted); margin-top: 6px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -147,7 +159,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   <div class="eyebrow">EEAT AUDIT</div>
   <h1>Перевірте свій сайт на EEAT</h1>
-  <p class="lede">Дізнайтесь, чи відповідає ваш сайт факторам довіри для Google та ШІ — вже сьогодні, за кілька хвилин.</p>
+  <p class="lede">Дізнайтесь, чи відповідає ваш сайт факторам довіри для Google та ШІ, вже сьогодні, за кілька хвилин.</p>
 
   <div class="input-card">
     <label class="field-label" for="url">Посилання на сайт клініки</label>
@@ -161,11 +173,17 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   </div>
 
   <div class="results" id="results">
-    <div class="overall">
-      <div class="overall-score"><span id="overallNum">0</span><span class="pct">%</span></div>
-      <div class="overall-label">Відповідність критеріям EEAT</div>
-      <div class="range-bar"><div class="marker" id="overallMarker"></div></div>
-      <div class="pages-note" id="pagesNote"></div>
+    <div class="overview-card">
+      <div>
+        <div class="overall-score"><span id="overallNum">0</span><span class="pct">%</span></div>
+        <div class="overall-label">Відповідність критеріям EEAT</div>
+        <div class="range-bar"><div class="marker" id="overallMarker"></div></div>
+        <div class="summary-text" id="summaryText"></div>
+      </div>
+      <div class="radar-wrap">
+        <div id="radarHolder"></div>
+        <div class="radar-caption">E · X · A · T</div>
+      </div>
     </div>
 
     <div class="priority-box" id="priorityBox">
@@ -173,7 +191,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <div id="priorityList"></div>
     </div>
 
-    <div class="item-list" id="itemList"></div>
+    <div class="item-grid" id="itemGrid"></div>
   </div>
 </div>
 
@@ -228,58 +246,92 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   }
 
   function animateCount(el, target) {
-    const start = 0;
-    const duration = 700;
+    const duration = 900;
     const startTime = performance.now();
     function step(now) {
       const p = Math.min(1, (now - startTime) / duration);
-      el.textContent = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
+      el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3)));
       if (p < 1) requestAnimationFrame(step);
     }
     requestAnimationFrame(step);
   }
 
-  function computeOverall(results) {
-    const known = results.filter((r) => r.verdict !== 'unknown' && ITEM_META[r.id]);
-    if (!known.length) return null;
-    const sum = known.reduce((s, r) => s + (r.verdict === 'pass' ? 1 : r.verdict === 'partial' ? 0.5 : 0), 0);
-    return Math.round((sum / known.length) * 100);
+  function computeScores(results) {
+    const byCat = { E: [], X: [], A: [], T: [] };
+    results.forEach((r) => { const meta = ITEM_META[r.id]; if (meta) byCat[meta.cat].push(r); });
+    const catScores = {};
+    ['E', 'X', 'A', 'T'].forEach((cat) => {
+      const known = byCat[cat].filter((r) => r.verdict !== 'unknown');
+      const sum = known.reduce((s, r) => s + (r.verdict === 'pass' ? 1 : r.verdict === 'partial' ? 0.5 : 0), 0);
+      catScores[cat] = known.length ? Math.round((sum / known.length) * 100) : null;
+    });
+    const knownCats = Object.values(catScores).filter((v) => v !== null);
+    const overall = knownCats.length ? Math.round(knownCats.reduce((s, v) => s + v, 0) / knownCats.length) : null;
+    return { catScores, overall };
   }
 
-  function itemRowHtml(r) {
+  function buildRadarSvg(catScores) {
+    const cx = 90, cy = 90, R = 62;
+    const axes = [{ key: 'E', angle: -90 }, { key: 'X', angle: 0 }, { key: 'A', angle: 90 }, { key: 'T', angle: 180 }];
+    function pt(angleDeg, r) {
+      const rad = (angleDeg * Math.PI) / 180;
+      return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)];
+    }
+    const grid = [0.33, 0.66, 1].map((lvl) =>
+      '<polygon points="' + axes.map((a) => pt(a.angle, R * lvl).join(',')).join(' ') +
+      '" fill="none" stroke="#D7E0E0" stroke-width="1"/>'
+    ).join('');
+    const axisLines = axes.map((a) => {
+      const [x, y] = pt(a.angle, R);
+      return '<line x1="' + cx + '" y1="' + cy + '" x2="' + x + '" y2="' + y + '" stroke="#D7E0E0" stroke-width="1"/>';
+    }).join('');
+    const dataPts = axes.map((a) => pt(a.angle, R * ((catScores[a.key] || 0) / 100)).join(',')).join(' ');
+    const labels = axes.map((a) => {
+      const [x, y] = pt(a.angle, R + 16);
+      const pct = catScores[a.key];
+      return '<text x="' + x + '" y="' + y + '" text-anchor="middle" dominant-baseline="middle" font-family="JetBrains Mono, monospace" font-size="11" font-weight="700" fill="#0F2027">' +
+        a.key + (pct !== null && pct !== undefined ? ' ' + pct + '%' : '') + '</text>';
+    }).join('');
+    return '<svg viewBox="0 0 180 180" width="170" height="170">' + grid + axisLines +
+      '<polygon points="' + dataPts + '" fill="#0E7C86" fill-opacity="0.25" stroke="#0A5C64" stroke-width="2"/>' +
+      labels + '</svg>';
+  }
+
+  function itemCardHtml(r, i) {
     const meta = ITEM_META[r.id] || { label: r.id };
     const v = r.verdict && VERDICT_LABEL[r.verdict] ? r.verdict : 'unknown';
-    let html = '<div class="item-row ' + v + '"><div class="item-top">' +
-      '<span class="item-label">' + escapeHtml(meta.label) + '</span>' +
+    let html = '<div class="item-card ' + v + '" style="animation-delay:' + Math.min(i * 35, 500) + 'ms">' +
+      '<div class="item-top"><span class="item-label">' + escapeHtml(meta.label) + '</span>' +
       '<span class="verdict-tag ' + v + '">' + VERDICT_LABEL[v] + '</span></div>';
     if (r.why) html += '<div class="item-why">' + escapeHtml(r.why) + '</div>';
     html += '</div>';
     return html;
   }
 
-  function renderResults(results, pagesRead, pagesSummary) {
+  function renderResults(data) {
+    const results = data.results || [];
     const known = results.filter((r) => ITEM_META[r.id]);
     const sorted = known.slice().sort((a, b) => (SEVERITY_ORDER[a.verdict] ?? 2) - (SEVERITY_ORDER[b.verdict] ?? 2));
 
-    const overall = computeOverall(results);
+    const { catScores, overall } = computeScores(results);
     animateCount($('overallNum'), overall !== null ? overall : 0);
-    if (overall !== null) { $('overallMarker').style.display = 'block'; $('overallMarker').style.left = overall + '%'; }
-    $('pagesNote').textContent = pagesSummary && pagesSummary.length
-      ? 'Прочитано сторінок: ' + pagesRead + ' (' + pagesSummary.join(', ') + ')'
-      : (pagesRead ? 'Прочитано сторінок: ' + pagesRead : '');
+    const marker = $('overallMarker');
+    if (overall !== null) { marker.style.left = overall + '%'; requestAnimationFrame(() => marker.classList.add('show')); }
+    $('summaryText').textContent = data.summary || '';
+    $('radarHolder').innerHTML = buildRadarSvg(catScores);
 
     const worst = sorted.filter((r) => r.verdict === 'fail').slice(0, 3);
     const priorityBox = $('priorityBox');
     if (worst.length) {
       $('priorityList').innerHTML = worst.map((r) =>
-        '<div class="priority-item"><b>' + escapeHtml((ITEM_META[r.id] || {}).label || r.id) + '</b> — ' + escapeHtml(r.why || '') + '</div>'
+        '<div class="priority-item"><b>' + escapeHtml((ITEM_META[r.id] || {}).label || r.id) + '.</b> ' + escapeHtml(r.why || '') + '</div>'
       ).join('');
       priorityBox.classList.add('active');
     } else {
       priorityBox.classList.remove('active');
     }
 
-    $('itemList').innerHTML = sorted.map(itemRowHtml).join('');
+    $('itemGrid').innerHTML = sorted.map(itemCardHtml).join('');
     $('results').classList.add('active');
   }
 
@@ -296,7 +348,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || 'Помилка сервера');
-      renderResults(data.results || [], data.pagesRead, data.pagesSummary);
+      renderResults(data);
     } catch (err) {
       showError(err && err.message ? err.message : 'Щось пішло не так. Спробуйте ще раз.');
     } finally {
