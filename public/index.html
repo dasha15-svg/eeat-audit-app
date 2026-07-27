@@ -389,8 +389,16 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
         body: JSON.stringify({ url })
       });
       if (!resp.ok) {
-        let msg = 'Помилка сервера';
-        try { msg = (await resp.json()).error || msg; } catch (e) { /* not JSON, use default */ }
+        let msg = 'Помилка сервера (код ' + resp.status + ')';
+        try {
+          const raw = await resp.text();
+          try {
+            const parsed = JSON.parse(raw);
+            msg = parsed.error || msg;
+          } catch (e) {
+            if (raw) msg += ': ' + raw.replace(/<[^>]+>/g, ' ').trim().slice(0, 200);
+          }
+        } catch (e) { /* couldn't even read the body, keep the status-only message */ }
         throw new Error(msg);
       }
       if (!resp.body) throw new Error('Потокова відповідь не підтримується цим браузером.');
