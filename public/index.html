@@ -150,8 +150,14 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
 .item-card.partial { border-left-color: var(--partial); }
 .item-card.fail { border-left-color: var(--fail); }
 .item-card.unknown { border-left-color: var(--unknown); }
-.item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.item-label { font-family: var(--display); font-size: 14px; font-weight: 600; }
+.item-num {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent-light), var(--accent-deep));
+  color: #fff; font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.item-top { display: flex; align-items: center; gap: 12px; }
+.item-label { font-family: var(--display); font-size: 14px; font-weight: 600; flex: 1; }
 .verdict-tag { font-family: var(--mono); font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
 .verdict-tag.pass { background: var(--pass-tint); color: var(--pass); }
 .verdict-tag.partial { background: var(--partial-tint); color: var(--partial); }
@@ -200,12 +206,12 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
       <div class="mini-rings-row" id="miniRingsRow"></div>
     </div>
 
+    <div class="item-grid" id="itemGrid"></div>
+
     <div class="priority-box" id="priorityBox">
       <div class="priority-title">🎯 З чого варто почати</div>
       <div id="priorityList"></div>
     </div>
-
-    <div class="item-grid" id="itemGrid"></div>
   </div>
 </div>
 
@@ -333,7 +339,8 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     const meta = ITEM_META[r.id] || { label: r.id };
     const v = r.verdict && VERDICT_LABEL[r.verdict] ? r.verdict : 'unknown';
     let html = '<div class="item-card ' + v + '" style="animation-delay:' + Math.min(i * 35, 500) + 'ms">' +
-      '<div class="item-top"><span class="item-label">' + escapeHtml(meta.label) + '</span>' +
+      '<div class="item-top"><span class="item-num">' + (i + 1) + '</span>' +
+      '<span class="item-label">' + escapeHtml(meta.label) + '</span>' +
       '<span class="verdict-tag ' + v + '">' + VERDICT_LABEL[v] + '</span></div>';
     if (r.why) html += '<div class="item-why">' + escapeHtml(r.why) + '</div>';
     html += '</div>';
@@ -366,6 +373,7 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     const url = $('url').value.trim();
     if (!url) { showError('Вставте посилання на сайт клініки.'); return; }
     setLoading(true);
+    $('loadingText').textContent = 'Читаємо сайт…';
     $('itemGrid').innerHTML = '';
     $('summaryText').textContent = '';
     $('priorityBox').classList.remove('active');
@@ -406,6 +414,7 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
           } else if (obj.type === 'result' && ITEM_META[obj.id]) {
             allResults.push(obj);
             $('itemGrid').insertAdjacentHTML('beforeend', itemCardHtml(obj, cardIndex++));
+            $('loadingText').textContent = 'Перевірили: ' + ITEM_META[obj.id].label + '. Далі…';
             updateOverview(allResults);
             updatePriorityBox(allResults);
           } else if (obj.type === 'error') {

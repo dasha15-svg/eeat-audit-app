@@ -60,6 +60,9 @@ T17 — Блок FAQ на сторінці послуги є і відповід
 1. Оцінюй СТРОГО за переданим текстом. Якщо даних для оцінки пункту
 немає, verdict = "unknown". Ніколи не вигадуй і не додумуй те, чого
 немає в тексті.
+1a. verdict = "fail" тільки якщо пункт дійсно відсутній у переданому
+тексті. Якщо щось релевантне Є, але коротке, загальне чи неповне,
+це "partial", а не "fail". Не занижуй verdict лише через якість подачі.
 2. Для кожного пункту поверни: id, verdict (pass / partial / fail / unknown),
 why (українською, 20-30 слів), одним реченням поєднай: що саме знайдено
 на сайті (або що відсутнє) і чому цей фактор важливий для довіри Google,
@@ -73,7 +76,10 @@ AI-пошуку та пацієнтів. Це має звучати як поя�
 5. Спочатку виведи один рядок з загальним висновком 2-3 реченнями
 українською: що на сайті вже добре працює на довіру, що найбільше
 потребує уваги, без технічного жаргону, орієнтуючись на власника клініки,
-який хоче зрозуміти цінність без заглиблення в деталі.
+який хоче зрозуміти цінність без заглиблення в деталі. Пиши "відсутнє"
+у summary лише про пункти, яким ти сам поставиш verdict fail. Якщо
+пункт partial, пиши в summary "потребує доопрацювання" чи подібне,
+а не "відсутнє".
 6. Відповідь пиши у форматі NDJSON: кожен рядок, окремий, повністю
 самостійний JSON-об'єкт, без масиву й без обгортки навколо всього, без
 преамбули, без markdown-обгортки (без потрійних зворотних лапок).
@@ -101,6 +107,13 @@ const LINK_BUCKETS = {
 // Listing/index pages match the keywords above (e.g. .../category/blog/) but
 // aren't actual content, they're slow to load and add nothing to the audit.
 const EXCLUDE_PATTERNS = ['/category/', '/tag/', '/page/', '/author/', '/search/'];
+// A URL whose entire last path segment IS one of these generic words is
+// almost certainly a listing page (e.g. /services/, /blog/), not an
+// individual service or article — those need a longer, specific slug.
+const LISTING_SLUGS = new Set([
+  'services', 'service', 'uslugi', 'uslugi-i-tseny', 'poslugy', 'poslugi',
+  'catalog', 'katalog', 'products', 'shop', 'blog', 'articles', 'stati', 'statti', 'novyny', 'news'
+]);
 const MAX_PER_BUCKET = 2; // streaming now means a slow run degrades gracefully instead of showing nothing
 const TIME_BUDGET_MS = 18000; // leaves real margin for the Claude call inside the 60s function ceiling
 
@@ -116,11 +129,18 @@ function stripHtml(html) {
     .trim();
 }
 
+function isLikelyListingPage(url) {
+  const path = new URL(url).pathname.replace(/\/+$/, '');
+  const lastSegment = (path.split('/').pop() || '').toLowerCase();
+  return LISTING_SLUGS.has(lastSegment);
+}
+
 function categorizeLinks(html, baseUrl) {
   const base = new URL(baseUrl);
   const re = /<a\s+[^>]*href=["']([^"'#]+)["'][^>]*>/gi;
   const seen = new Set([base.href]);
   const buckets = { about: [], doctor: [], service: [], blog: [] };
+  const listingPages = { about: null, doctor: null, service: null, blog: null };
   let m;
   while ((m = re.exec(html))) {
     let abs;
@@ -131,19 +151,54 @@ function categorizeLinks(html, baseUrl) {
     if (seen.has(abs)) continue;
     const lower = abs.toLowerCase();
     if (EXCLUDE_PATTERNS.some((p) => lower.includes(p))) continue;
+    const isListing = isLikelyListingPage(abs);
     for (const bucket of Object.keys(LINK_BUCKETS)) {
-      if (buckets[bucket].length >= MAX_PER_BUCKET) continue;
       const matched = LINK_BUCKETS[bucket].some((kw) =>
         kw instanceof RegExp ? kw.test(lower) : lower.includes(kw)
       );
-      if (matched) {
+      if (!matched) continue;
+      if (isListing) {
+        if (!listingPages[bucket]) { listingPages[bucket] = abs; seen.add(abs); }
+      } else if (buckets[bucket].length < MAX_PER_BUCKET) {
         buckets[bucket].push(abs);
         seen.add(abs);
-        break;
       }
+      break;
     }
   }
-  return buckets;
+  return { buckets, listingPages };
+}
+
+// If a bucket came back empty because the only matching link was a listing
+// page (e.g. the homepage only links to /services/, not to any specific
+// service), fetch that one listing page and mine it for real sub-page
+// links. This costs one extra fetch, not counted as an analyzed page.
+async function fillFromListingPage(bucket, listingUrl, baseUrl) {
+  if (!listingUrl) return [];
+  try {
+    const html = await fetchPage(listingUrl);
+    const base = new URL(baseUrl);
+    const re = /<a\s+[^>]*href=["']([^"'#]+)["'][^>]*>/gi;
+    const found = [];
+    const seen = new Set();
+    let m;
+    while ((m = re.exec(html)) && found.length < MAX_PER_BUCKET) {
+      let abs;
+      try { abs = new URL(m[1], base).href; } catch (e) { continue; }
+      if (new URL(abs).hostname !== base.hostname) continue;
+      if (abs === listingUrl || seen.has(abs)) continue;
+      if (EXCLUDE_PATTERNS.some((p) => abs.toLowerCase().includes(p))) continue;
+      if (isLikelyListingPage(abs)) continue;
+      const lower = abs.toLowerCase();
+      const matched = LINK_BUCKETS[bucket].some((kw) =>
+        kw instanceof RegExp ? kw.test(lower) : lower.includes(kw)
+      );
+      if (matched) { found.push(abs); seen.add(abs); }
+    }
+    return found;
+  } catch (e) {
+    return [];
+  }
 }
 
 function pickPagesToFetch(buckets) {
@@ -236,33 +291,27 @@ function buildSchemaResults(allHtml) {
   ];
 }
 
-async function handleAudit(req, res) {
+async function handleAudit(url, controller, encoder) {
   const START = Date.now();
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
-
-  let url = (req.body && req.body.url || '').trim();
-  if (!url) {
-    res.status(400).json({ error: 'URL обов’язковий' });
-    return;
-  }
-  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+  const send = (obj) => controller.enqueue(encoder.encode(JSON.stringify(obj) + '\n'));
 
   let mainHtml;
   try {
     mainHtml = await fetchPage(url);
   } catch (e) {
-    res.status(502).json({ error: 'Не вдалося прочитати сайт за цим посиланням. Перевірте адресу.' });
+    send({ type: 'error', message: 'Не вдалося прочитати сайт за цим посиланням. Перевірте адресу.' });
     return;
   }
 
   const allHtml = [mainHtml];
   const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 6000)];
-  const pagesSummary = ['Головна'];
 
-  const buckets = categorizeLinks(mainHtml, url);
+  const { buckets, listingPages } = categorizeLinks(mainHtml, url);
+  for (const bucket of Object.keys(buckets)) {
+    if (buckets[bucket].length === 0 && listingPages[bucket] && Date.now() - START < TIME_BUDGET_MS) {
+      buckets[bucket] = await fillFromListingPage(bucket, listingPages[bucket], url);
+    }
+  }
   const toFetch = pickPagesToFetch(buckets);
 
   for (const page of toFetch) {
@@ -272,7 +321,6 @@ async function handleAudit(req, res) {
       allHtml.push(html);
       const label = extractTitle(html) || page.fallback;
       parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 6000));
-      pagesSummary.push(label);
     } catch (e) {
       // a related page failing to load isn't fatal — skip it
     }
@@ -281,16 +329,8 @@ async function handleAudit(req, res) {
   const schemaResults = buildSchemaResults(allHtml);
   const combinedText = parts.join('\n\n');
 
-  // Commit to a streaming response from here on: schema results go out
-  // immediately, then each line Claude finishes gets forwarded right away
-  // instead of waiting for the full 22-item response to complete.
-  res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
-  res.setHeader('Cache-Control', 'no-cache, no-transform');
-  res.setHeader('X-Accel-Buffering', 'no');
-  res.status(200);
-
   for (const sr of schemaResults) {
-    res.write(JSON.stringify({ type: 'result', id: sr.id, verdict: sr.verdict, why: sr.why }) + '\n');
+    send({ type: 'result', id: sr.id, verdict: sr.verdict, why: sr.why });
   }
 
   let claudeResp;
@@ -311,14 +351,12 @@ async function handleAudit(req, res) {
       })
     });
   } catch (e) {
-    res.write(JSON.stringify({ type: 'error', message: 'Помилка звернення до Claude API' }) + '\n');
-    res.end();
+    send({ type: 'error', message: 'Помилка звернення до Claude API' });
     return;
   }
 
   if (!claudeResp.ok || !claudeResp.body) {
-    res.write(JSON.stringify({ type: 'error', message: 'Помилка Claude API' }) + '\n');
-    res.end();
+    send({ type: 'error', message: 'Помилка Claude API' });
     return;
   }
 
@@ -335,8 +373,7 @@ async function handleAudit(req, res) {
       const line = raw.replace(/```json|```/g, '').trim();
       if (!line) continue;
       try {
-        const obj = JSON.parse(line);
-        res.write(JSON.stringify(obj) + '\n');
+        send(JSON.parse(line));
       } catch (e) {
         // an incomplete or malformed line, worst case this one item is skipped
       }
@@ -368,27 +405,61 @@ async function handleAudit(req, res) {
     const trailing = textBuffer.replace(/```json|```/g, '').trim();
     if (trailing) {
       try {
-        res.write(JSON.stringify(JSON.parse(trailing)) + '\n');
+        send(JSON.parse(trailing));
       } catch (e) {
         // trailing partial line with no final newline, nothing more to recover
       }
     }
   } catch (e) {
-    res.write(JSON.stringify({ type: 'error', message: 'З’єднання перервалося під час аналізу.' }) + '\n');
+    send({ type: 'error', message: 'З’єднання перервалося під час аналізу.' });
   }
-
-  res.end();
 }
 
-module.exports = async function handler(req, res) {
-  try {
-    await handleAudit(req, res);
-  } catch (e) {
-    console.error('Unhandled error in /api/audit:', e);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Неочікувана помилка на сервері. Спробуйте ще раз.' });
-    } else {
-      try { res.end(); } catch (e2) { /* connection already gone */ }
-    }
+export default async function handler(request) {
+  const jsonHeaders = { 'Content-Type': 'application/json; charset=utf-8' };
+
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: jsonHeaders });
   }
-};
+
+  let body;
+  try {
+    body = await request.json();
+  } catch (e) {
+    body = {};
+  }
+  let url = ((body && body.url) || '').trim();
+  if (!url) {
+    return new Response(JSON.stringify({ error: 'URL обов’язковий' }), { status: 400, headers: jsonHeaders });
+  }
+  if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        await handleAudit(url, controller, encoder);
+      } catch (e) {
+        console.error('Unhandled error in /api/audit:', e);
+        try {
+          controller.enqueue(encoder.encode(JSON.stringify({ type: 'error', message: 'Неочікувана помилка на сервері. Спробуйте ще раз.' }) + '\n'));
+        } catch (e2) {
+          // controller may already be closed, nothing more to do
+        }
+      } finally {
+        try { controller.close(); } catch (e3) { /* already closed */ }
+      }
+    }
+  });
+
+  return new Response(stream, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no'
+    }
+  });
+}
+
+export const config = { runtime: 'nodejs' };
