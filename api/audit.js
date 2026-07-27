@@ -1,6 +1,6 @@
 // Vercel Serverless Function — POST { url } -> EEAT audit JSON
-// Deploy target for the checklist in eeat_checklist_breakdown.md.
 // Requires env var ANTHROPIC_API_KEY (Vercel dashboard -> Settings -> Environment Variables).
+// Requires vercel.json with maxDuration: 60 (Hobby plan ceiling) for the wider crawl below.
 
 const SYSTEM_PROMPT = `Ти — експерт з EEAT-аудиту медичних сайтів (Experience, Expertise,
 Authoritativeness, Trustworthiness). Тобі передано текст зі сторінок
@@ -53,24 +53,31 @@ T17 — Блок FAQ на сторінці послуги є і відповід
 немає — verdict = "unknown". Ніколи не вигадуй і не додумуй те, чого
 немає в тексті.
 2. Для кожного пункту поверни: id, verdict (pass / partial / fail / unknown),
-reason (українською, максимум 15 слів), recommendation (українською,
-максимум 12 слів; якщо verdict = pass — можна порожній рядок).
+why (українською, 20-30 слів) — одним реченням поєднай: що саме знайдено
+на сайті (або що відсутнє) І чому цей фактор важливий для довіри Google,
+AI-пошуку та пацієнтів. Це має звучати як пояснення для власника клініки,
+не як суха технічна нотатка.
 3. Відповідь — строго JSON, без преамбули, без markdown-обгортки (без
 потрійних зворотних лапок), без коментарів до або після JSON.
 
 Формат відповіді:
-{"results":[{"id":"E2","verdict":"pass","reason":"...","recommendation":"..."}]}
+{"results":[{"id":"E2","verdict":"pass","why":"..."}]}
 
 Поверни рівно 22 об'єкти в results — по одному на кожен пункт зі списку
 вище, у тому ж порядку.`;
 
-// Light heuristic: after the main page, follow up to 2 internal links that
-// look like a doctors/about page, so a single URL from the visitor still
-// surfaces doctor-level EEAT signals. Not a full crawl — that's backlog.
-const LINK_KEYWORDS = [
-  'vrach', 'doctor', 'likar', 'лікар', 'врач',
-  'o-nas', 'про-клін', 'about', 'team', 'komanda', 'команда', 'спеціаліст'
-];
+// Broader discovery than a single guess: categorize internal links into
+// buckets so one URL from the visitor still surfaces doctor/service/blog
+// content, not just the homepage. Still bounded — a real unlimited crawl
+// needs a queue, which is explicitly out of scope for this version.
+const LINK_BUCKETS = {
+  about: ['o-nas', 'про-клін', 'pro-klinik', 'about-us', 'about'],
+  doctor: ['vrach', 'doctor', 'likar', 'лікар', 'врач', 'staff', 'komanda', 'команда', 'спеціаліст'],
+  service: ['uslug', 'poslug', 'service', 'lechenie', 'likuvannya', 'hirurg', 'terapiya', 'diagnostika'],
+  blog: ['blog', 'stati', 'статт', /\/20\d\d\/\d\d\/\d\d\//]
+};
+const MAX_PER_BUCKET = 2;
+const TIME_BUDGET_MS = 35000; // leaves headroom for the Claude call inside the 60s function ceiling
 
 function stripHtml(html) {
   return html
@@ -84,36 +91,59 @@ function stripHtml(html) {
     .trim();
 }
 
-function findRelatedLinks(html, baseUrl) {
-  const found = [];
-  const seen = new Set();
-  const re = /<a\s+[^>]*href=["']([^"'#]+)["'][^>]*>/gi;
-  let m;
+function categorizeLinks(html, baseUrl) {
   const base = new URL(baseUrl);
-  while ((m = re.exec(html)) && found.length < 2) {
-    const href = m[1];
-    const lower = href.toLowerCase();
-    if (!LINK_KEYWORDS.some((kw) => lower.includes(kw))) continue;
+  const re = /<a\s+[^>]*href=["']([^"'#]+)["'][^>]*>/gi;
+  const seen = new Set([base.href]);
+  const buckets = { about: [], doctor: [], service: [], blog: [] };
+  let m;
+  while ((m = re.exec(html))) {
+    let abs;
     try {
-      const abs = new URL(href, base).href;
-      if (new URL(abs).hostname !== base.hostname) continue;
-      if (seen.has(abs)) continue;
-      seen.add(abs);
-      found.push(abs);
-    } catch (e) {
-      // malformed href, skip
+      abs = new URL(m[1], base).href;
+    } catch (e) { continue; }
+    if (new URL(abs).hostname !== base.hostname) continue;
+    if (seen.has(abs)) continue;
+    const lower = abs.toLowerCase();
+    for (const bucket of Object.keys(LINK_BUCKETS)) {
+      if (buckets[bucket].length >= MAX_PER_BUCKET) continue;
+      const matched = LINK_BUCKETS[bucket].some((kw) =>
+        kw instanceof RegExp ? kw.test(lower) : lower.includes(kw)
+      );
+      if (matched) {
+        buckets[bucket].push(abs);
+        seen.add(abs);
+        break;
+      }
     }
   }
-  return found;
+  return buckets;
 }
 
-async function fetchPage(url) {
-  const resp = await fetch(url, {
-    headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EEATAuditBot/1.0)' },
-    redirect: 'follow'
-  });
-  if (!resp.ok) throw new Error('status ' + resp.status);
-  return resp.text();
+function pickPagesToFetch(buckets) {
+  const labeled = [];
+  buckets.about.forEach(() => {});
+  if (buckets.about[0]) labeled.push({ url: buckets.about[0], label: 'Про клініку' });
+  buckets.doctor.forEach((u, i) => labeled.push({ url: u, label: 'Лікар ' + (i + 1) }));
+  buckets.service.forEach((u, i) => labeled.push({ url: u, label: 'Послуга ' + (i + 1) }));
+  buckets.blog.forEach((u, i) => labeled.push({ url: u, label: 'Стаття блогу ' + (i + 1) }));
+  return labeled;
+}
+
+async function fetchPage(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 6000);
+  try {
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EEATAuditBot/1.0)' },
+      redirect: 'follow',
+      signal: controller.signal
+    });
+    if (!resp.ok) throw new Error('status ' + resp.status);
+    return await resp.text();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // Pure code, no LLM and no external API: JSON-LD lives in <script> tags,
@@ -152,14 +182,14 @@ function buildSchemaResults(allHtml) {
   return checks.map((c) => ({
     id: c.id,
     verdict: c.ok ? 'pass' : 'fail',
-    reason: c.ok
-      ? 'Знайдена в JSON-LD на прочитаних сторінках.'
-      : 'Не знайдена в JSON-LD на жодній із прочитаних сторінок: ' + c.label + '.',
-    recommendation: c.ok ? '' : 'Додати JSON-LD зі схемою ' + c.label + '.'
+    why: c.ok
+      ? 'Мікророзмітка ' + c.label + ' знайдена в коді сторінки — це допомагає Google і AI точно розпізнати, що це за сторінка.'
+      : 'Мікророзмітка ' + c.label + ' не знайдена — без неї Google і AI гірше розуміють структуру сторінки й довіряють їй менше.'
   }));
 }
 
 module.exports = async function handler(req, res) {
+  const START = Date.now();
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -181,21 +211,25 @@ module.exports = async function handler(req, res) {
   }
 
   const allHtml = [mainHtml];
-  const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 8000)];
+  const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 6000)];
+  const pagesSummary = ['Головна'];
 
-  const relatedLinks = findRelatedLinks(mainHtml, url);
-  for (const link of relatedLinks) {
+  const buckets = categorizeLinks(mainHtml, url);
+  const toFetch = pickPagesToFetch(buckets);
+
+  for (const page of toFetch) {
+    if (Date.now() - START > TIME_BUDGET_MS) break; // out of time budget — stop discovering, move on to analysis
     try {
-      const html = await fetchPage(link);
+      const html = await fetchPage(page.url);
       allHtml.push(html);
-      parts.push('=== ' + link + ' ===\n' + stripHtml(html).slice(0, 8000));
+      parts.push('=== ' + page.label + ' ===\n' + stripHtml(html).slice(0, 6000));
+      pagesSummary.push(page.label);
     } catch (e) {
       // a related page failing to load isn't fatal — skip it
     }
   }
 
   const schemaResults = buildSchemaResults(allHtml);
-
   const combinedText = parts.join('\n\n');
 
   let claudeData;
@@ -235,8 +269,6 @@ module.exports = async function handler(req, res) {
   try {
     parsed = JSON.parse(clean);
   } catch (e) {
-    // Model added stray text around the JSON despite instructions —
-    // fall back to the substring between the first { and the last }.
     const start = clean.indexOf('{');
     const end = clean.lastIndexOf('}');
     if (start !== -1 && end !== -1 && end > start) {
@@ -254,6 +286,7 @@ module.exports = async function handler(req, res) {
 
   res.status(200).json({
     results: [...(parsed.results || []), ...schemaResults],
-    pagesRead: parts.length
+    pagesRead: parts.length,
+    pagesSummary
   });
 };

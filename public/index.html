@@ -39,7 +39,7 @@ body {
   min-height: 100vh;
   padding: 40px 16px 48px;
 }
-.wrap { max-width: 760px; margin: 0 auto; }
+.wrap { max-width: 720px; margin: 0 auto; }
 
 .brand-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
 .brand-mark {
@@ -67,17 +67,9 @@ h1 { font-size: 28px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.01em
 .field-label { display: block; font-size: 12px; color: var(--ink-muted); margin-bottom: 6px; }
 .url-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .url-input {
-  flex: 1;
-  min-width: 220px;
-  font-family: var(--mono);
-  font-size: 13.5px;
-  color: var(--ink);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  outline: none;
-  transition: border-color .15s, box-shadow .15s;
+  flex: 1; min-width: 220px; font-family: var(--mono); font-size: 13.5px; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; outline: none; transition: border-color .15s, box-shadow .15s;
 }
 .url-input:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-tint); }
 button {
@@ -105,7 +97,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .results.active { display: block; }
 .overall {
   background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px;
-  padding: 20px 22px; margin-bottom: 18px; position: relative; overflow: hidden;
+  padding: 20px 22px; margin-bottom: 14px; position: relative; overflow: hidden;
 }
 .overall::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
@@ -117,32 +109,33 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .pages-note { font-size: 11.5px; color: var(--ink-muted); margin-top: 10px; }
 
 .range-bar { position: relative; height: 6px; border-radius: 3px; background: linear-gradient(to right, var(--fail-tint) 0%, var(--fail-tint) 40%, var(--partial-tint) 40%, var(--partial-tint) 70%, var(--pass-tint) 70%, var(--pass-tint) 100%); }
-.range-bar.small { height: 5px; margin: 10px 0 14px; }
 .range-bar .marker { position: absolute; top: 50%; width: 3px; height: 16px; background: var(--ink); border-radius: 2px; transform: translate(-50%, -50%); display: none; }
-.range-bar.small .marker { height: 13px; }
 
-.category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-@media (max-width: 620px) { .category-grid { grid-template-columns: 1fr; } .url-row { flex-direction: column; } button { width: 100%; } }
-.cat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-.cat-head { display: flex; justify-content: space-between; align-items: baseline; }
-.cat-name { font-size: 13.5px; font-weight: 600; }
-.cat-letter { font-family: var(--mono); color: var(--accent); margin-right: 4px; }
-.cat-score { font-family: var(--mono); font-size: 15px; font-weight: 600; color: var(--ink-muted); }
+.priority-box {
+  background: linear-gradient(135deg, #FFF9EF, var(--partial-tint));
+  border: 1px solid #EFD9A8; border-radius: 14px; padding: 16px 18px; margin-bottom: 14px;
+  display: none;
+}
+.priority-box.active { display: block; }
+.priority-title { font-size: 13px; font-weight: 700; margin-bottom: 8px; }
+.priority-item { font-size: 12.5px; color: var(--ink); padding: 5px 0; }
+.priority-item b { font-weight: 600; }
 
-.item-row { padding: 9px 0; border-top: 1px solid var(--border); }
+.item-list { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 6px 18px; }
+.item-row { padding: 12px 0 12px 12px; border-top: 1px solid var(--border); border-left: 3px solid transparent; }
 .item-row:first-child { border-top: none; }
-.item-top { display: flex; align-items: center; gap: 7px; }
-.dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.dot.pass { background: var(--pass); } .dot.partial { background: var(--partial); }
-.dot.fail { background: var(--fail); } .dot.unknown { background: var(--unknown); }
-.item-label { font-size: 12.5px; flex: 1; }
-.verdict-tag { font-family: var(--mono); font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+.item-row.pass { border-left-color: var(--pass); }
+.item-row.partial { border-left-color: var(--partial); }
+.item-row.fail { border-left-color: var(--fail); }
+.item-row.unknown { border-left-color: var(--unknown); }
+.item-top { display: flex; align-items: center; gap: 8px; }
+.item-label { font-size: 13px; font-weight: 600; flex: 1; }
+.verdict-tag { font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
 .verdict-tag.pass { background: var(--pass-tint); color: var(--pass); }
 .verdict-tag.partial { background: var(--partial-tint); color: var(--partial); }
 .verdict-tag.fail { background: var(--fail-tint); color: var(--fail); }
 .verdict-tag.unknown { background: var(--unknown-tint); color: var(--unknown); }
-.item-reason { font-size: 12px; color: var(--ink-muted); margin: 4px 0 0 14px; line-height: 1.4; }
-.item-rec { font-size: 12px; color: var(--accent); margin: 3px 0 0 14px; line-height: 1.4; }
+.item-why { font-size: 12.5px; color: var(--ink-muted); margin-top: 5px; line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -163,18 +156,24 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       <button id="runBtn" type="button">Перевірити сайт</button>
     </div>
     <div class="hint">Отримаєте детальний звіт по кожному критерію EEAT.</div>
-    <div class="loading-row" id="loadingRow"><div class="scan-line"></div><span id="loadingText">Аналізуємо сайт…</span></div>
+    <div class="loading-row" id="loadingRow"><div class="scan-line"></div><span id="loadingText">Аналізуємо сайт, це може зайняти до хвилини…</span></div>
     <div class="error-row" id="errorRow"></div>
   </div>
 
   <div class="results" id="results">
     <div class="overall">
-      <div class="overall-score"><span id="overallNum">—</span><span class="pct">%</span></div>
+      <div class="overall-score"><span id="overallNum">0</span><span class="pct">%</span></div>
       <div class="overall-label">Відповідність критеріям EEAT</div>
       <div class="range-bar"><div class="marker" id="overallMarker"></div></div>
       <div class="pages-note" id="pagesNote"></div>
     </div>
-    <div class="category-grid" id="categoryGrid"></div>
+
+    <div class="priority-box" id="priorityBox">
+      <div class="priority-title">🎯 З чого варто почати</div>
+      <div id="priorityList"></div>
+    </div>
+
+    <div class="item-list" id="itemList"></div>
   </div>
 </div>
 
@@ -207,8 +206,8 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     'SCHEMA-DOC': { cat: 'T', label: 'Мікророзмітка лікаря' },
     'SCHEMA-SERVICE': { cat: 'T', label: 'Мікророзмітка послуги' }
   };
-  const CAT_NAMES = { E: 'Experience', X: 'Expertise', A: 'Authoritativeness', T: 'Trustworthiness' };
   const VERDICT_LABEL = { pass: 'OK', partial: 'частково', fail: 'немає', unknown: 'немає даних' };
+  const SEVERITY_ORDER = { fail: 0, partial: 1, unknown: 2, pass: 3 };
   const $ = (id) => document.getElementById(id);
 
   function escapeHtml(str) {
@@ -228,62 +227,59 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
     row.classList.add('active');
   }
 
-  function positionMarker(el, pct) {
-    if (pct === null || pct === undefined) { el.style.display = 'none'; return; }
-    el.style.display = 'block';
-    el.style.left = pct + '%';
+  function animateCount(el, target) {
+    const start = 0;
+    const duration = 700;
+    const startTime = performance.now();
+    function step(now) {
+      const p = Math.min(1, (now - startTime) / duration);
+      el.textContent = Math.round(start + (target - start) * (1 - Math.pow(1 - p, 3)));
+      if (p < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
   }
 
-  function computeScores(results) {
-    const byCat = { E: [], X: [], A: [], T: [] };
-    results.forEach((r) => { const meta = ITEM_META[r.id]; if (meta) byCat[meta.cat].push(r); });
-    const catScores = {};
-    let sumOfCats = 0, catCount = 0;
-    ['E', 'X', 'A', 'T'].forEach((cat) => {
-      const known = byCat[cat].filter((r) => r.verdict !== 'unknown');
-      const sum = known.reduce((s, r) => s + (r.verdict === 'pass' ? 1 : r.verdict === 'partial' ? 0.5 : 0), 0);
-      const pct = known.length ? Math.round((sum / known.length) * 100) : null;
-      catScores[cat] = pct;
-      if (pct !== null) { sumOfCats += pct; catCount++; }
-    });
-    const overall = catCount ? Math.round(sumOfCats / catCount) : null;
-    return { byCat, catScores, overall };
+  function computeOverall(results) {
+    const known = results.filter((r) => r.verdict !== 'unknown' && ITEM_META[r.id]);
+    if (!known.length) return null;
+    const sum = known.reduce((s, r) => s + (r.verdict === 'pass' ? 1 : r.verdict === 'partial' ? 0.5 : 0), 0);
+    return Math.round((sum / known.length) * 100);
   }
 
   function itemRowHtml(r) {
     const meta = ITEM_META[r.id] || { label: r.id };
     const v = r.verdict && VERDICT_LABEL[r.verdict] ? r.verdict : 'unknown';
-    let html = '<div class="item-row"><div class="item-top">' +
-      '<span class="dot ' + v + '"></span>' +
+    let html = '<div class="item-row ' + v + '"><div class="item-top">' +
       '<span class="item-label">' + escapeHtml(meta.label) + '</span>' +
       '<span class="verdict-tag ' + v + '">' + VERDICT_LABEL[v] + '</span></div>';
-    if (r.reason) html += '<div class="item-reason">' + escapeHtml(r.reason) + '</div>';
-    if (r.recommendation) html += '<div class="item-rec">→ ' + escapeHtml(r.recommendation) + '</div>';
+    if (r.why) html += '<div class="item-why">' + escapeHtml(r.why) + '</div>';
     html += '</div>';
     return html;
   }
 
-  function renderResults(results, pagesRead) {
-    const scores = computeScores(results);
-    $('overallNum').textContent = scores.overall !== null ? scores.overall : '—';
-    positionMarker($('overallMarker'), scores.overall);
-    $('pagesNote').textContent = pagesRead ? 'Прочитано сторінок: ' + pagesRead : '';
+  function renderResults(results, pagesRead, pagesSummary) {
+    const known = results.filter((r) => ITEM_META[r.id]);
+    const sorted = known.slice().sort((a, b) => (SEVERITY_ORDER[a.verdict] ?? 2) - (SEVERITY_ORDER[b.verdict] ?? 2));
 
-    const grid = $('categoryGrid');
-    grid.innerHTML = '';
-    ['E', 'X', 'A', 'T'].forEach((cat) => {
-      const items = scores.byCat[cat];
-      const pct = scores.catScores[cat];
-      const card = document.createElement('div');
-      card.className = 'cat-card';
-      let inner = '<div class="cat-head"><div class="cat-name"><span class="cat-letter">' + cat + '</span>' +
-        CAT_NAMES[cat] + '</div><div class="cat-score">' + (pct !== null ? pct + '%' : '—') + '</div></div>' +
-        '<div class="range-bar small"><div class="marker" style="display:' +
-        (pct !== null ? 'block' : 'none') + ';left:' + (pct || 0) + '%"></div></div>';
-      inner += items.map(itemRowHtml).join('');
-      card.innerHTML = inner;
-      grid.appendChild(card);
-    });
+    const overall = computeOverall(results);
+    animateCount($('overallNum'), overall !== null ? overall : 0);
+    if (overall !== null) { $('overallMarker').style.display = 'block'; $('overallMarker').style.left = overall + '%'; }
+    $('pagesNote').textContent = pagesSummary && pagesSummary.length
+      ? 'Прочитано сторінок: ' + pagesRead + ' (' + pagesSummary.join(', ') + ')'
+      : (pagesRead ? 'Прочитано сторінок: ' + pagesRead : '');
+
+    const worst = sorted.filter((r) => r.verdict === 'fail').slice(0, 3);
+    const priorityBox = $('priorityBox');
+    if (worst.length) {
+      $('priorityList').innerHTML = worst.map((r) =>
+        '<div class="priority-item"><b>' + escapeHtml((ITEM_META[r.id] || {}).label || r.id) + '</b> — ' + escapeHtml(r.why || '') + '</div>'
+      ).join('');
+      priorityBox.classList.add('active');
+    } else {
+      priorityBox.classList.remove('active');
+    }
+
+    $('itemList').innerHTML = sorted.map(itemRowHtml).join('');
     $('results').classList.add('active');
   }
 
@@ -300,7 +296,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.error || 'Помилка сервера');
-      renderResults(data.results || [], data.pagesRead);
+      renderResults(data.results || [], data.pagesRead, data.pagesSummary);
     } catch (err) {
       showError(err && err.message ? err.message : 'Щось пішло не так. Спробуйте ще раз.');
     } finally {
