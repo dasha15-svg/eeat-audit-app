@@ -108,7 +108,7 @@ const LINK_BUCKETS = {
 };
 // Different sections carry different weight in the checklist — services and
 // recent blog posts matter more than a second or third doctor bio.
-const BUCKET_CAPS = { about: 1, doctor: 2, service: 3, blog: 2 }; // 8 pages total incl. homepage — balances coverage against Claude's response time
+const BUCKET_CAPS = { about: 1, doctor: 1, service: 1, blog: 1 }; // back to the original reliable scope — 5 pages total incl. homepage
 // Listing/index pages match the keywords above (e.g. .../category/blog/) but
 // aren't actual content, they're slow to load and add nothing to the audit.
 const EXCLUDE_PATTERNS = ['/category/', '/tag/', '/page/', '/author/', '/search/'];
