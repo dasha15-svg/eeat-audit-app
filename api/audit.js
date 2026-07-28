@@ -64,7 +64,7 @@ T17 — Блок FAQ на сторінці послуги є і відповід
 тексті. Якщо щось релевантне Є, але коротке, загальне чи неповне,
 це "partial", а не "fail". Не занижуй verdict лише через якість подачі.
 2. Для кожного пункту поверни: id, verdict (pass / partial / fail / unknown),
-why (українською, 20-30 слів), одним реченням поєднай: що саме знайдено
+why (українською, максимум 12 слів, коротко і по суті), одним реченням поєднай: що саме знайдено
 на сайті (або що відсутнє) і чому цей фактор важливий для довіри Google,
 AI-пошуку та пацієнтів. Це має звучати як пояснення для власника клініки,
 не як суха технічна нотатка.
@@ -416,7 +416,7 @@ async function handleAudit(url, controller, encoder) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-5',
-        max_tokens: 4000,
+        max_tokens: 2500,
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: combinedText }],
         stream: true

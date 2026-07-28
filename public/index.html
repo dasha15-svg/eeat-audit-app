@@ -258,33 +258,28 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     return d.innerHTML;
   }
 
-  const LOADING_MESSAGES = [
-    'Аналізуємо сайт на EEAT…',
-    'Звіряємо з чек-листом…',
-    'Формуємо звіт…'
+  const LOADING_STEPS = [
+    ['Аналізуємо сайт на EEAT…', 12000],
+    ['Звіряємо з чек-листом…', 25000],
+    ['Формуємо звіт…', 20000]
   ];
   const LOADING_HOLD_MESSAGE = 'Ще трохи, дописуємо звіт…';
-  let loadingRotator = null;
+  let loadingTimers = [];
 
   function setLoading(isLoading) {
     $('runBtn').disabled = isLoading;
     $('loadingRow').classList.toggle('active', isLoading);
+    loadingTimers.forEach((t) => clearTimeout(t));
+    loadingTimers = [];
     if (isLoading) {
-      let i = 0;
-      $('loadingText').textContent = LOADING_MESSAGES[0];
-      loadingRotator = setInterval(() => {
-        i++;
-        if (i < LOADING_MESSAGES.length) {
-          $('loadingText').textContent = LOADING_MESSAGES[i];
-        } else {
-          $('loadingText').textContent = LOADING_HOLD_MESSAGE;
-          clearInterval(loadingRotator);
-          loadingRotator = null;
-        }
-      }, 3200);
-    } else if (loadingRotator) {
-      clearInterval(loadingRotator);
-      loadingRotator = null;
+      $('loadingText').textContent = LOADING_STEPS[0][0];
+      let elapsed = 0;
+      for (let i = 1; i < LOADING_STEPS.length; i++) {
+        elapsed += LOADING_STEPS[i - 1][1];
+        loadingTimers.push(setTimeout(() => { $('loadingText').textContent = LOADING_STEPS[i][0]; }, elapsed));
+      }
+      elapsed += LOADING_STEPS[LOADING_STEPS.length - 1][1];
+      loadingTimers.push(setTimeout(() => { $('loadingText').textContent = LOADING_HOLD_MESSAGE; }, elapsed));
     }
   }
 
