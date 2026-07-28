@@ -108,7 +108,7 @@ const LINK_BUCKETS = {
 };
 // Different sections carry different weight in the checklist — services and
 // recent blog posts matter more than a second or third doctor bio.
-const BUCKET_CAPS = { about: 1, doctor: 3, service: 5, blog: 4 };
+const BUCKET_CAPS = { about: 1, doctor: 2, service: 3, blog: 2 }; // 8 pages total incl. homepage — balances coverage against Claude's response time
 // Listing/index pages match the keywords above (e.g. .../category/blog/) but
 // aren't actual content, they're slow to load and add nothing to the audit.
 const EXCLUDE_PATTERNS = ['/category/', '/tag/', '/page/', '/author/', '/search/'];
@@ -373,7 +373,7 @@ async function handleAudit(url, controller, encoder) {
   }
 
   const allHtml = [mainHtml];
-  const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 9000)];
+  const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 5500)];
 
   const { buckets, listingPages } = categorizeLinks(mainHtml, url);
   const fallbackJobs = Object.keys(buckets)
@@ -393,7 +393,7 @@ async function handleAudit(url, controller, encoder) {
     const { page, html } = result.value;
     allHtml.push(html);
     const label = extractTitle(html) || page.fallback;
-    parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 9000));
+    parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 5500));
   }
 
   const schemaResults = buildSchemaResults(allHtml);
@@ -404,6 +404,8 @@ async function handleAudit(url, controller, encoder) {
   }
 
   let claudeResp;
+  const claudeController = new AbortController();
+  const claudeConnectTimer = setTimeout(() => claudeController.abort(), 30000);
   try {
     claudeResp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -418,11 +420,14 @@ async function handleAudit(url, controller, encoder) {
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: combinedText }],
         stream: true
-      })
+      }),
+      signal: claudeController.signal
     });
   } catch (e) {
-    send({ type: 'error', message: 'Помилка звернення до Claude API' });
+    send({ type: 'error', message: 'Помилка звернення до Claude API (з’єднання не відповіло вчасно)' });
     return;
+  } finally {
+    clearTimeout(claudeConnectTimer);
   }
 
   if (!claudeResp.ok || !claudeResp.body) {

@@ -259,12 +259,11 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
   }
 
   const LOADING_MESSAGES = [
-    'Читаємо сторінки сайту…',
-    'Аналізуємо контент через AI…',
-    'Перевіряємо фактори довіри…',
-    'Звіряємо з чек-листом EEAT…',
+    'Аналізуємо сайт на EEAT…',
+    'Звіряємо з чек-листом…',
     'Формуємо звіт…'
   ];
+  const LOADING_HOLD_MESSAGE = 'Ще трохи, дописуємо звіт…';
   let loadingRotator = null;
 
   function setLoading(isLoading) {
@@ -274,8 +273,14 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
       let i = 0;
       $('loadingText').textContent = LOADING_MESSAGES[0];
       loadingRotator = setInterval(() => {
-        i = (i + 1) % LOADING_MESSAGES.length;
-        $('loadingText').textContent = LOADING_MESSAGES[i];
+        i++;
+        if (i < LOADING_MESSAGES.length) {
+          $('loadingText').textContent = LOADING_MESSAGES[i];
+        } else {
+          $('loadingText').textContent = LOADING_HOLD_MESSAGE;
+          clearInterval(loadingRotator);
+          loadingRotator = null;
+        }
       }, 3200);
     } else if (loadingRotator) {
       clearInterval(loadingRotator);
