@@ -119,7 +119,6 @@ const LISTING_SLUGS = new Set([
   'services', 'service', 'uslugi', 'uslugi-i-tseny', 'poslugy', 'poslugi',
   'catalog', 'katalog', 'products', 'shop', 'blog', 'articles', 'stati', 'statti', 'novyny', 'news'
 ]);
-const TIME_BUDGET_MS = 150000; // fetch phase, generous now that the Pro ceiling is 300s
 const HARD_DEADLINE_MS = 270000; // absolute ceiling for the whole request, 30s margin under the 300s platform kill
 
 function stripHtml(html) {
@@ -366,34 +365,41 @@ async function handleAudit(url, controller, encoder) {
     return;
   }
 
+  // These only need the homepage, so send them the moment it's in —
+  // no reason to make the visitor wait for 13 more pages to see anything.
+  const contactResults = buildContactResults(mainHtml);
+  for (const cr of contactResults) {
+    send({ type: 'result', id: cr.id, verdict: cr.verdict, why: cr.why });
+  }
+
   const allHtml = [mainHtml];
   const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 9000)];
 
   const { buckets, listingPages } = categorizeLinks(mainHtml, url);
-  for (const bucket of Object.keys(buckets)) {
-    if (buckets[bucket].length === 0 && listingPages[bucket] && Date.now() - START < TIME_BUDGET_MS) {
-      buckets[bucket] = await fillFromListingPage(bucket, listingPages[bucket], url);
-    }
-  }
+  const fallbackJobs = Object.keys(buckets)
+    .filter((bucket) => buckets[bucket].length === 0 && listingPages[bucket])
+    .map((bucket) => fillFromListingPage(bucket, listingPages[bucket], url).then((found) => { buckets[bucket] = found; }));
+  await Promise.allSettled(fallbackJobs);
+
   const toFetch = pickPagesToFetch(buckets);
 
-  for (const page of toFetch) {
-    if (Date.now() - START > TIME_BUDGET_MS) break; // out of time budget — stop discovering, move on to analysis
-    try {
-      const html = await fetchPage(page.url);
-      allHtml.push(html);
-      const label = extractTitle(html) || page.fallback;
-      parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 9000));
-    } catch (e) {
-      // a related page failing to load isn't fatal — skip it
-    }
+  // Fetch every related page at once instead of one at a time — total time
+  // becomes roughly "the slowest single page", not "the sum of all of them".
+  const fetchedPages = await Promise.allSettled(
+    toFetch.map((page) => fetchPage(page.url).then((html) => ({ page, html })))
+  );
+  for (const result of fetchedPages) {
+    if (result.status !== 'fulfilled') continue; // a related page failing to load isn't fatal — skip it
+    const { page, html } = result.value;
+    allHtml.push(html);
+    const label = extractTitle(html) || page.fallback;
+    parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 9000));
   }
 
   const schemaResults = buildSchemaResults(allHtml);
-  const contactResults = buildContactResults(mainHtml);
   const combinedText = parts.join('\n\n');
 
-  for (const sr of [...contactResults, ...schemaResults]) {
+  for (const sr of schemaResults) {
     send({ type: 'result', id: sr.id, verdict: sr.verdict, why: sr.why });
   }
 
