@@ -95,15 +95,20 @@ AI-пошуку та пацієнтів. Це має звучати як поя�
 об'єктів в один рядок.`;
 
 // Broader discovery than a single guess: categorize internal links into
-// buckets so one URL from the visitor still surfaces doctor/service/blog
-// content, not just the homepage. Still bounded — a real unlimited crawl
-// needs a queue, which is explicitly out of scope for this version.
+// buckets so one URL from the visitor surfaces doctor/service/blog content
+// across a real chunk of the site, not just the homepage.
 const LINK_BUCKETS = {
   about: ['o-nas', 'про-клін', 'pro-klinik', 'about-us', 'about'],
   doctor: ['vrach', 'doctor', 'likar', 'лікар', 'врач', 'staff', 'komanda', 'команда', 'спеціаліст'],
-  service: ['uslug', 'poslug', 'service', 'lechenie', 'likuvannya', 'hirurg', 'terapiya', 'diagnostika'],
+  service: [
+    'uslug', 'poslug', 'service', 'lechenie', 'likuvannya', 'hirurg', 'terapiya', 'diagnostika',
+    'napryam', 'napravlen', 'specializ'
+  ],
   blog: ['blog', 'stati', 'статт', /\/20\d\d\/\d\d\/\d\d\//]
 };
+// Different sections carry different weight in the checklist — services and
+// recent blog posts matter more than a second or third doctor bio.
+const BUCKET_CAPS = { about: 1, doctor: 3, service: 5, blog: 4 };
 // Listing/index pages match the keywords above (e.g. .../category/blog/) but
 // aren't actual content, they're slow to load and add nothing to the audit.
 const EXCLUDE_PATTERNS = ['/category/', '/tag/', '/page/', '/author/', '/search/'];
@@ -114,9 +119,8 @@ const LISTING_SLUGS = new Set([
   'services', 'service', 'uslugi', 'uslugi-i-tseny', 'poslugy', 'poslugi',
   'catalog', 'katalog', 'products', 'shop', 'blog', 'articles', 'stati', 'statti', 'novyny', 'news'
 ]);
-const MAX_PER_BUCKET = 2; // streaming now means a slow run degrades gracefully instead of showing nothing
-const TIME_BUDGET_MS = 12000; // fetch phase — leaves much more margin for a slow Claude response
-const HARD_DEADLINE_MS = 50000; // absolute ceiling for the whole request, well under the 60s platform kill
+const TIME_BUDGET_MS = 150000; // fetch phase, generous now that the Pro ceiling is 300s
+const HARD_DEADLINE_MS = 270000; // absolute ceiling for the whole request, 30s margin under the 300s platform kill
 
 function stripHtml(html) {
   return html
@@ -125,6 +129,11 @@ function stripHtml(html) {
     .replace(/<!--[\s\S]*?-->/g, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/&nbsp;/gi, ' ')
+    .replace(/&copy;/gi, '©')
+    .replace(/&mdash;/gi, '—')
+    .replace(/&ndash;/gi, '–')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, '\'')
     .replace(/&amp;/gi, '&')
     .replace(/\s+/g, ' ')
     .trim();
@@ -160,7 +169,7 @@ function categorizeLinks(html, baseUrl) {
       if (!matched) continue;
       if (isListing) {
         if (!listingPages[bucket]) { listingPages[bucket] = abs; seen.add(abs); }
-      } else if (buckets[bucket].length < MAX_PER_BUCKET) {
+      } else if (buckets[bucket].length < BUCKET_CAPS[bucket]) {
         buckets[bucket].push(abs);
         seen.add(abs);
       }
@@ -183,7 +192,7 @@ async function fillFromListingPage(bucket, listingUrl, baseUrl) {
     const found = [];
     const seen = new Set();
     let m;
-    while ((m = re.exec(html)) && found.length < MAX_PER_BUCKET) {
+    while ((m = re.exec(html)) && found.length < BUCKET_CAPS[bucket]) {
       let abs;
       try { abs = new URL(m[1], base).href; } catch (e) { continue; }
       if (new URL(abs).hostname !== base.hostname) continue;
@@ -221,7 +230,7 @@ function extractTitle(html) {
 
 async function fetchPage(url, timeoutMs) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs || 3500);
+  const timer = setTimeout(() => controller.abort(), timeoutMs || 8000);
   try {
     const resp = await fetch(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (compatible; EEATAuditBot/1.0)' },
@@ -256,6 +265,59 @@ function extractSchemaTypes(html) {
     }
   }
   return Array.from(found);
+}
+
+function buildContactResults(mainHtml) {
+  const text = stripHtml(mainHtml);
+  const results = [];
+
+  const phoneRe = /(\+?\d{1,3}[\s.\-]?)?\(?\d{2,4}\)?[\s.\-]?\d{2,3}[\s.\-]?\d{2,3}[\s.\-]?\d{2,4}/;
+  const hasPhone = phoneRe.test(text);
+  results.push({
+    id: 'T7',
+    verdict: hasPhone ? 'pass' : 'fail',
+    why: hasPhone
+      ? 'На головній сторінці є номер телефону, це базовий і очікуваний сигнал контактності для медичного сайту.'
+      : 'На головній сторінці не вдалося знайти номер телефону в тексті, пацієнту складніше зрозуміти, як звʼязатися з клінікою.'
+  });
+
+  const emailRe = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+  const hasEmail = emailRe.test(text);
+  results.push({
+    id: 'T8',
+    verdict: hasEmail ? 'pass' : 'fail',
+    why: hasEmail
+      ? 'Електронна пошта вказана на головній сторінці, це додатковий канал зв’язку окрім телефону.'
+      : 'Електронну пошту на головній сторінці знайти не вдалося, лишається лише телефон чи форма.'
+  });
+
+  const currentYear = new Date().getFullYear();
+  const copyrightMatch = text.match(/(?:©|copyright)\D{0,10}(\d{4})/i);
+  let copyrightVerdict = 'unknown';
+  let copyrightWhy = 'Явного «copyright» з роком на головній сторінці не знайдено, тому перевірити актуальність неможливо.';
+  if (copyrightMatch) {
+    const year = parseInt(copyrightMatch[1], 10);
+    if (year >= currentYear - 1) {
+      copyrightVerdict = 'pass';
+      copyrightWhy = 'Рік у позначці copyright актуальний (' + year + '), це слабкий, але сигнал, що сайт підтримується.';
+    } else {
+      copyrightVerdict = 'partial';
+      copyrightWhy = 'Рік у позначці copyright застарілий (' + year + '), це може справляти враження покинутого сайту.';
+    }
+  }
+  results.push({ id: 'T13', verdict: copyrightVerdict, why: copyrightWhy });
+
+  const legalRe = /(privacy[\s-]?policy|політика конфіденційност|конфіденційності|публічна оферта|угода користувача|terms of use|умови використання)/i;
+  const hasLegal = legalRe.test(text);
+  results.push({
+    id: 'T14',
+    verdict: hasLegal ? 'pass' : 'fail',
+    why: hasLegal
+      ? 'На сайті є посилання на політику конфіденційності чи умови використання, це базова юридична прозорість.'
+      : 'Посилань на політику конфіденційності або умови використання на головній сторінці не знайдено.'
+  });
+
+  return results;
 }
 
 function buildSchemaResults(allHtml) {
@@ -305,7 +367,7 @@ async function handleAudit(url, controller, encoder) {
   }
 
   const allHtml = [mainHtml];
-  const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 6000)];
+  const parts = ['=== Головна ===\n' + stripHtml(mainHtml).slice(0, 9000)];
 
   const { buckets, listingPages } = categorizeLinks(mainHtml, url);
   for (const bucket of Object.keys(buckets)) {
@@ -321,16 +383,17 @@ async function handleAudit(url, controller, encoder) {
       const html = await fetchPage(page.url);
       allHtml.push(html);
       const label = extractTitle(html) || page.fallback;
-      parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 6000));
+      parts.push('=== ' + label + ' ===\n' + stripHtml(html).slice(0, 9000));
     } catch (e) {
       // a related page failing to load isn't fatal — skip it
     }
   }
 
   const schemaResults = buildSchemaResults(allHtml);
+  const contactResults = buildContactResults(mainHtml);
   const combinedText = parts.join('\n\n');
 
-  for (const sr of schemaResults) {
+  for (const sr of [...contactResults, ...schemaResults]) {
     send({ type: 'result', id: sr.id, verdict: sr.verdict, why: sr.why });
   }
 
