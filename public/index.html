@@ -189,7 +189,7 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
   </div>
 
   <div class="results" id="results">
-    <div class="overview-card">
+    <div class="overview-card" id="overviewCard" style="display:none">
       <div class="overview-top">
         <div class="ring-wrap">
           <svg viewBox="0 0 150 150">
@@ -258,9 +258,29 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     return d.innerHTML;
   }
 
+  const LOADING_MESSAGES = [
+    'Читаємо сторінки сайту…',
+    'Аналізуємо контент через AI…',
+    'Перевіряємо фактори довіри…',
+    'Звіряємо з чек-листом EEAT…',
+    'Формуємо звіт…'
+  ];
+  let loadingRotator = null;
+
   function setLoading(isLoading) {
     $('runBtn').disabled = isLoading;
     $('loadingRow').classList.toggle('active', isLoading);
+    if (isLoading) {
+      let i = 0;
+      $('loadingText').textContent = LOADING_MESSAGES[0];
+      loadingRotator = setInterval(() => {
+        i = (i + 1) % LOADING_MESSAGES.length;
+        $('loadingText').textContent = LOADING_MESSAGES[i];
+      }, 3200);
+    } else if (loadingRotator) {
+      clearInterval(loadingRotator);
+      loadingRotator = null;
+    }
   }
 
   function showError(msg) {
@@ -377,10 +397,10 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
     const url = $('url').value.trim();
     if (!url) { showError('Вставте посилання на сайт клініки.'); return; }
     setLoading(true);
-    $('loadingText').textContent = 'Читаємо сайт…';
     $('itemGrid').innerHTML = '';
     $('summaryText').textContent = '';
     $('priorityBox').classList.remove('active');
+    $('overviewCard').style.display = 'none';
     $('results').classList.remove('active');
     const allResults = [];
     let cardIndex = 0;
@@ -429,12 +449,15 @@ button:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2
             if (!revealed) { $('results').classList.add('active'); revealed = true; }
             $('itemGrid').insertAdjacentHTML('beforeend', itemCardHtml(obj, cardIndex++));
             $('loadingText').textContent = 'Перевірили: ' + ITEM_META[obj.id].label + '. Далі…';
-            updateOverview(allResults);
-            updatePriorityBox(allResults);
           } else if (obj.type === 'error') {
             showError(obj.message || 'Щось пішло не так під час аналізу.');
           }
         }
+      }
+      if (allResults.length) {
+        $('overviewCard').style.display = '';
+        updateOverview(allResults);
+        updatePriorityBox(allResults);
       }
     } catch (err) {
       showError(err && err.message ? err.message : 'Щось пішло не так. Спробуйте ще раз.');
